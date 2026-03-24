@@ -3,8 +3,8 @@ library(tidyverse)
 #######################################################################################
 # Read in raw data 
 #######################################################################################
-tas_raw <- read.csv("../../data/transition_adulthood.csv")
-cpi_data <- openxlsx::read.xlsx("../../data/bls_CPI.xlsx") %>% 
+tas_raw <- read.csv("./data/transition_adulthood.csv")
+cpi_data <- openxlsx::read.xlsx("./data/bls_CPI.xlsx") %>% 
   mutate(ratio_2010 = 218.056 / annual.avg) 
 
 #######################################################################################
