@@ -23,20 +23,50 @@ tas_clean <- tas_raw %>%
          across(starts_with("Tuition_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
          Tuition_Amount = Tuition_Amount * ratio_2010,
          Student_Loan_Amount = Student_Loan_Amount * ratio_2010) %>%
-  mutate(full_year_4yr = case_when(Degree_Type_Seeking_1 == 2 & (First_Year_Attended_1 < Year | First_Year_Attended_1 == Year & First_Month_Attended_1 == 1) & 
-                                     (Last_Year_Attended_1 > Year | Last_Year_Attended_1 == 0 | Last_Year_Attended_1 == Year & Last_Month_Attended_1 == 12) ~ 1,
-                                   Degree_Type_Seeking_2 == 2 & (First_Year_Attended_2 < Year | First_Year_Attended_2 == Year & First_Month_Attended_2 == 1) & 
-                                     (Last_Year_Attended_2 > Year | Last_Year_Attended_2 == 0 | Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12) ~ 1,
-                                   Degree_Type_Seeking_1 == 2 & Degree_Type_Seeking_2 == 2 & First_Year_Attended_1 < Year & Last_Year_Attended_1 ==Year & 
-                                     (Last_Year_Attended_2 == 0 | Last_Year_Attended_2 > Year | Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12) ~ 1,
-                                   TRUE ~ 0),
-         full_year_2yr = case_when(Degree_Type_Seeking_1 == 1 & (First_Year_Attended_1 < Year | First_Year_Attended_1 == Year & First_Month_Attended_1 == 1) & 
-                                     (Last_Year_Attended_1 > Year | Last_Year_Attended_1 == 0 | Last_Year_Attended_1 == Year & Last_Month_Attended_1 == 12) ~ 1,
-                                   Degree_Type_Seeking_2 == 1 & (First_Year_Attended_2 < Year | First_Year_Attended_2 == Year & First_Month_Attended_2 == 1) & 
-                                     (Last_Year_Attended_2 > Year | Last_Year_Attended_2 == 0 | Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12) ~ 1,
-                                   Degree_Type_Seeking_1 == 1 & Degree_Type_Seeking_2 == 1 & First_Year_Attended_1 < Year & Last_Year_Attended_1 ==Year & 
-                                     (Last_Year_Attended_2 == 0 | Last_Year_Attended_2 > Year | Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12) ~ 1,
-                                   TRUE ~ 0)) %>% 
+  mutate(
+    # started before reference year, or in january of reference year
+    enrolled_full_start_1 = (First_Year_Attended_1 < Year | (First_Year_Attended_1 == Year & First_Month_Attended_1 == 1)),
+    enrolled_full_start_2 = (First_Year_Attended_2 < Year |(First_Year_Attended_2 == Year & First_Month_Attended_2 == 1)),
+    # still enrolled (0), ended after reference year,
+    # or ended in december of reference year
+    enrolled_full_end_1 = (Last_Year_Attended_1 > Year  | Last_Year_Attended_1 == 0 |(Last_Year_Attended_1 == Year & Last_Month_Attended_1 == 12) ),
+    enrolled_full_end_2 = (Last_Year_Attended_2 > Year  | Last_Year_Attended_2 == 0 | (Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12)),
+    
+    # second enrollment picks up within 2 months of first ending
+    # (allows for semester break between same-type institutions)
+    transfer_contiguous = (!is.na(First_Year_Attended_2) & !is.na(Last_Year_Attended_1)  &
+        ((First_Year_Attended_2 == Last_Year_Attended_1 &First_Month_Attended_2 <= Last_Month_Attended_1 + 2) |
+            # enrollment 1 ends december, enrollment 2 starts january next year
+            (First_Year_Attended_2 == Last_Year_Attended_1 + 1 & Last_Month_Attended_1  == 12 &  First_Month_Attended_2 == 1))),
+    
+    full_year_4yr = case_when(
+      # single enrollment, primary is 4yr and spans full year
+      Degree_Type_Seeking_1 == 2 & enrolled_full_start_1 & enrolled_full_end_1 ~ 1,
+      # single enrollment, secondary is 4yr and spans full year
+      Degree_Type_Seeking_2 == 2 & enrolled_full_start_2 & enrolled_full_end_2 ~ 1,
+      # transfer case: both enrollments are 4yr and together span full year
+      Degree_Type_Seeking_1 == 2 & Degree_Type_Seeking_2 == 2 & enrolled_full_start_1 & enrolled_full_end_2 & transfer_contiguous ~ 1,
+      TRUE ~ 0),
+    full_year_2yr = case_when(
+      # single enrollment, primary is 2yr and spans full year
+      Degree_Type_Seeking_1 == 1 & enrolled_full_start_1 & enrolled_full_end_1 ~ 1,
+      # single enrollment, secondary is 2yr and spans full year
+      Degree_Type_Seeking_2 == 1 & enrolled_full_start_2 & enrolled_full_end_2 ~ 1,
+      # transfer case: both enrollments are 2yr and together span full year
+      Degree_Type_Seeking_1 == 1 & Degree_Type_Seeking_2 == 1 & enrolled_full_start_1 & enrolled_full_end_2   & transfer_contiguous ~ 1,
+      TRUE ~ 0 ),
+    
+    # started fall semester of reference year, still enrolled at year end
+    one_semester_start_1 = (First_Year_Attended_1 == Year & First_Month_Attended_1 %in% c(8, 9) &
+        (Last_Year_Attended_1 == 0 | Last_Year_Attended_1 > Year)),
+    one_semester_start_2 = (First_Year_Attended_2 == Year &First_Month_Attended_2 %in% c(8, 9) &
+        (Last_Year_Attended_2 == 0 | Last_Year_Attended_2 > Year)),
+    
+    # enrolled from start of year, graduated spring semester
+    one_semester_grad_1 = ((First_Year_Attended_1 < Year |(First_Year_Attended_1 == Year & First_Month_Attended_1 == 1)) & 
+                             Last_Year_Attended_1 == Year & Last_Month_Attended_1 %in% c(5, 6)),
+    one_semester_grad_2 = ( (First_Year_Attended_2 < Year |(First_Year_Attended_2 == Year & First_Month_Attended_2 == 1)) &
+        Last_Year_Attended_2 == Year & Last_Month_Attended_2 %in% c(5, 6))) %>% 
   left_join(psid_clean %>% select(Family_ID, Survey_Year, Total_Income_Head_Spouse, Total_Family_Income, Family_Unit_Size))
 
 
@@ -70,9 +100,11 @@ tas_clean_college = tas_clean %>%
 tuition_amount = tas_clean %>% 
   select(Family_ID, ID_number, Survey_Year, Year, Enrollment_Status, Part_or_Full_Time_Student, Degree_Type_Seeking_1, Degree_Type_Seeking_2, 
          First_Month_Attended_1, First_Year_Attended_1, Last_Month_Attended_1, Last_Year_Attended_1,
-         First_Month_Attended_2, First_Year_Attended_2, Last_Month_Attended_2, Last_Year_Attended_2, Tuition_Amount, full_year_4yr, full_year_2yr) %>% 
+         First_Month_Attended_2, First_Year_Attended_2, Last_Month_Attended_2, Last_Year_Attended_2, Tuition_Amount, full_year_4yr, full_year_2yr, 
+         one_semester_start_1, one_semester_start_2, one_semester_grad_1, one_semester_grad_2) %>% 
   # Full Time Student and Full Year Enrolled
-  filter(Part_or_Full_Time_Student == 1) %>% 
+  filter(Part_or_Full_Time_Student == 1, 
+         (full_year_4yr == 1 | full_year_2yr | any(one_semester_start_1, one_semester_start_2, one_semester_grad_1, one_semester_grad_2)) == TRUE) %>% 
   group_by(Degree_Type_Seeking_1) %>% 
   dplyr::summarize(avg_tution)
             
