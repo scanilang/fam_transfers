@@ -259,9 +259,13 @@ psid_clean = psid_ind %>%
                   Total_Labor_Income_Plus_Business, Total_Public_Transfers , Unemployment_Comp_Head, Workers_Comp_Head, 
                   Unemployment_Comp_Spouse, Workers_Comp_Spouse, 
                   Total_Family_Income, Total_Taxable_Income_Head_Spouse, Total_Transfer_Head_Spouse, Total_Taxable_Income_Other,
-                  Total_Transfers_Other, Total_Social_Security_Other, School_Expenses, Other_School_Expenses, Total_Education_Expenditure), ~ . *ratio_2010)) 
+                  Total_Transfers_Other, Total_Social_Security_Other, School_Expenses, Other_School_Expenses, Total_Education_Expenditure), ~ . *ratio_2010)) %>% 
+  group_by(ER30001, ER30002) %>%
+  mutate(received_transfer_past = cumsum(Received_Support_Amount_Head_Spouse > 0) > 0 & row_number() > 1,
+         provided_transfer_past = cumsum(Provided_Family_Support_NetACS > 0) > 0 & row_number() > 1) %>% 
+  ungroup()
 
-write.csv(psid_clean, "../../data/psid_clean.csv")
+write.csv(psid_clean, "../data/psid_clean.csv")
 
 View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,
                            Received_ChildSupport_Spouse, Received_ChildSupport_Head , Received_Alimony_Head, Age_Youngest,Have_Dependents, rec_al, rec_cs, prov_al, prov_cs) %>% 
