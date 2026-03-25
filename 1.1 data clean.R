@@ -3,9 +3,9 @@ library(dplyr)
 #######################################################################################
 # Read in raw data 
 #######################################################################################
-psid_fam<- read.csv("../../data/famtransfer_famfile.csv") %>% rename(ER30001 = ID_1968)
-psid_ind<- read.csv("../../data/famtransfer_indfile.csv") %>% filter(ER30001 < 3000) %>% select(-Interview_Number)
-cpi_data <- openxlsx::read.xlsx("../../data/bls_CPI.xlsx") %>% 
+psid_fam<- read.csv("../data/famtransfer_famfile.csv") %>% rename(ER30001 = ID_1968)
+psid_ind<- read.csv("../data/famtransfer_indfile.csv") %>% filter(ER30001 < 3000) %>% select(-Interview_Number)
+cpi_data <- openxlsx::read.xlsx("../data/bls_CPI.xlsx") %>% 
   mutate(ratio_2010 = 218.056 / annual.avg) 
 
 # function to take the mode
@@ -61,6 +61,32 @@ psid_clean = psid_ind %>%
                                                                         TRUE ~ .))),
          Head_Enrolled = if_else((Head_Last_Year_Attend_College == Year |Head_Last_Year_Attend_College == 96 ) , 1, 0),
          Spouse_Enrolled = if_else((Spouse_Last_Year_Attend_College == Year |Spouse_Last_Year_Attend_College == 96 ), 1, 0),
+         # Family Types
+         parent_educ_head = pmax(Father_Education_Head,  Mother_Education_Head, na.rm = TRUE),
+         parent_educ_spouse = pmax(Father_Education_Spouse, Mother_Education_Spouse, na.rm = TRUE),
+         head_side = case_when(
+           Parents_Poor_Head == 1 | parent_educ_head %in% c(1,2) ~ "low",
+           parent_educ_head == 3                                  ~ "mid",
+           parent_educ_head >= 4                                  ~ "high",
+           TRUE ~ NA_character_),
+         spouse_side = case_when(
+           parent_educ_spouse %in% c(1,2) ~ "low",
+           parent_educ_spouse == 3        ~ "mid",
+           parent_educ_spouse >= 4        ~ "high",
+           TRUE ~ NA_character_),
+         family_type = case_when(
+           # married households — both sides observable
+           head_side == "high" & spouse_side == "high"                         ~ "both_high",
+           (head_side == "high" & spouse_side %in% c("low", "mid")) |
+             (head_side %in% c("low", "mid") & spouse_side == "high")          ~ "mixed",
+           head_side == "mid"  & spouse_side == "mid"                          ~ "both_mid",
+           head_side == "low"  & spouse_side == "low"                          ~ "both_low",
+           
+           # single households — spouse_side is NA, use head side only
+           is.na(spouse_side) & head_side == "high"                            ~ "mixed",
+           is.na(spouse_side) & head_side == "mid"                             ~ "both_mid",
+           is.na(spouse_side) & head_side == "low"                             ~ "both_low",
+           TRUE ~ NA_character_ ),
          # Receive Support Variables
          (across(c(Received_Family_Reported_Head,Received_Family_Reported_Spouse,
                    Received_ChildSupport_Reported_Head, Received_ChildSupport_Reported_Spouse,
