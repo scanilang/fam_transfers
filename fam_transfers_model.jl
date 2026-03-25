@@ -5,7 +5,7 @@ function model_create(;
     rb = 0.05,
     ra_w = 6.09,
     ra_b = 2.91,
-    apnts = 15,
+
     survival_risk = survival_risk_full,
 
     # Demographic variables
@@ -29,6 +29,11 @@ function model_create(;
 
 
     )
+    
+    # 2 year interest rates
+    rb = (1 + r)^2 - 1
+    ra_w = (1 + ra_w)^2 - 1
+    ra_b = (1 + ra_b)^2 - 1
 
     # Income Process
     MC_1 = rouwenhorst(zpnts, ρ[1] , eps_std[1], 0) 
@@ -71,13 +76,13 @@ function model_create(;
                         if a > 0
                             a_next = a * (1 + ra_w * (1 - tax_a))
                         else
-                            a_next = a * rb
+                            a_next = a * (1+rb)
                         end
                     else
                         if a > 0
                             a_next = a * (1 + ra_b * (1 - tax_a))
                         else
-                            a_next = a * rb
+                            a_next = a * (1+rb)
                         end
                     end
                     

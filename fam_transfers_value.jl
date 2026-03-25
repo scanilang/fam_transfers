@@ -40,7 +40,7 @@ end
 ###############################################################################################
 
 function Vj(vjp1, model, j)
-    (; beta, gamma, shock_resources, survival_risk) = model
+    (; beta, gamma, shock_resources) = model
 
     # Create interpolation object
     v_itp = [LinearInterpolation((a_grid, z_grid[R]), vjp1[R, m, n, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
@@ -55,10 +55,10 @@ function Vj(vjp1, model, j)
             resources = shock_resources[j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
         
             if j < 23
-                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta * EV_jp1(model, vjp1_itp, j, R, m, n, e, ap1, i_z)),
+                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta * EV_jp1(model, vjp1_itp, j, R, m, n, e, past_in, past_out, ap1, i_z)),
                             0.0, resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
-                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta * EW_jp1(model, vjp1_itp, j, R, m, n, e, ap1, i_z)),
+                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta * EW_jp1(model, vjp1_itp, j, R, m, n, e, past_in, past_out, ap1, i_z)),
                             0.0, resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
 
@@ -71,15 +71,21 @@ function Vj(vjp1, model, j)
     return Vj, PFj
 end
 
-function EV_jp1(model, vjp1, j, R, m, n, e, ap1, i_z)
-    (; survival_risk, Pimat, prob_shocks, zpnts) = model
+function EV_jp1(model, vjp1, j, R, m, n, e, past_in, past_out, ap1, i_z)
+    (; Pimat, prob_shocks, zpnts) = model
     jp1 = j + 1
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
         pi_z =Pimat[i_z, i_zp1]
-        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-            expected_value += pi_z * prob_shocks[jp1, R, m, n, e, i_zp1, shock_in, shock_out, past_in, past_out] * vjp1[shock_in, shock_out, past_in, past_out](ap1, i_zp1)
+        for shock_in in 1:2, shock_out in 1:2, past_in_next in 1:2, past_out_next in 1:2
+            if past_in == 2 && past_in_next == 1
+                continue  
+            end
+            if past_out == 2 && past_out_next == 1
+                continue 
+            end
+            expected_value += pi_z * prob_shocks[jp1, R, m, n, e, i_zp1, shock_in, shock_out, past_in_next, past_out_next] * vjp1[shock_in, shock_out, past_in_next, past_out_next](ap1, i_zp1)
         end
     end
 
@@ -115,7 +121,7 @@ function Wj(wjp1, model, j)
                 Wj[R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(resources, gamma)
                 WPFj[R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta *  sj* EW_jp1(model, wjp1_itp, j, R, m, n, e, ap1, i_z)),
+                result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta *  sj* EW_jp1(model, wjp1_itp, j, R, m, n, e, past_in, past_out,ap1, i_z)),
                             0.0, resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj[R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj[R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
@@ -126,14 +132,21 @@ function Wj(wjp1, model, j)
     return Wj, WPFj
 end
 
-function EW_jp1(model, wjp1_itp, j, R, m, n, e, ap1, i_z)
+function EW_jp1(model, wjp1_itp, j, R, m, n, e, past_in, past_out, ap1, i_z)
     (; survival_risk, prob_shocks ) = model
     jp1 = j + 1
+    sjp1 = survival_risk[jp1, R]
 
     expected_value = 0.0
-    for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-        expected_value += prob_shocks[jp1, R, m, n, e, i_z, shock_in, shock_out, past_in, past_out] * wjp1_itp[shock_in, shock_out, past_in, past_out](ap1, i_z)
+    for shock_in in 1:2, shock_out in 1:2, past_in_next in 1:2, past_out_next in 1:2
+        if past_in == 2 && past_in_next == 1
+            continue 
+        end
+        if past_out == 2 && past_out_next == 1
+            continue  
+        end
+        expected_value += prob_shocks[jp1, R, m, n, e, i_z, shock_in, shock_out, past_in_next, past_out_next] * wjp1_itp[shock_in, shock_out, past_in_next, past_out_next](ap1, i_z)
     end
 
-    return expected_value
+    return expected_value * sjp1
 end
