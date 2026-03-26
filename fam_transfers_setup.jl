@@ -57,9 +57,49 @@ end
 # Transfer Functions
 ###############################################################################################
 
+
+if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
+    transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_probit.csv", DataFrame)
+    transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_amount.csv", DataFrame)
+else
+    transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_probit.csv", DataFrame)
+    transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_amount.csv", DataFrame)
+end
+
+β_white_probit_in   = Tuple(transfer_probit.white_probit_in)
+β_black_probit_in   = Tuple(transfer_probit.black_probit_in)
+β_white_probit_out   = Tuple(transfer_probit.white_probit_out)
+β_black_probit_out   = Tuple(transfer_probit.black_probit_out)
+β_white_transfer_in  = Tuple(transfer_amount.white_transfer_in)
+β_black_transfer_in = Tuple(transfer_amount.black_transfer_in)
+β_black_transfer_out  = Tuple(transfer_amount.black_transfer_out)
+β_white_transfer_out     = Tuple(transfer_amount.white_transfer_out)
+
+struct ModelCoefs
+    β_white_probit_in::NTuple{19,Float64}
+    β_black_probit_in::NTuple{19,Float64}
+    β_white_probit_out::NTuple{19,Float64}
+    β_black_probit_out::NTuple{19,Float64}
+    β_white_transfer_in::NTuple{13,Float64}
+    β_black_transfer_in::NTuple{13,Float64}
+    β_black_transfer_out::NTuple{13,Float64}
+    β_white_transfer_out::NTuple{13,Float64}
+end
+
+coefs = ModelCoefs(
+    β_white_probit_in,
+    β_black_probit_in,
+    β_white_probit_out,
+    β_black_probit_out,
+    β_white_transfer_in,
+    β_black_transfer_in,
+    β_black_transfer_out,
+    β_white_transfer_out
+)
+
+
 function shocks_out_prob(r,n,m, j, y, past_in, past_out)
     mid_age = 22.5 + 4*j
-
     if r == 2 
         val = - 2.25826 - 0.11377 * n - 0.04575 *m + (0.01669455 *mid_age)  - (0.0005308654 *mid_age^2) - past_in*0.50769 + past_out* 1.45337 +log(y) *0.32320 -0.53053 - 1.87701 # transfer min, income max 180000
     else

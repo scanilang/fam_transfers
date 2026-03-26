@@ -60,22 +60,22 @@ stargazer(white_probit_out, black_probit_out,white_probit_in, black_probit_in )
 
 # separate asset and nonasset income
 black_transfer_out = lm(log_transfer_out ~ log_nonasset_income + log_asset_income + Age + Age2 + Family_Unit_Size + 
-                          Marital_Status + family_type + received_transfer_past + provided_transfer_past  + Year_bins,
+                          Marital_Status + family_type + Year_bins,
                        data = psid_clean %>% filter(Race_Head == "Black") %>%  filter(Provided_Support_Indicator == 1))
 summary(black_transfer_out)
 
 black_transfer_in = lm(log_transfer_in ~ log_nonasset_income + log_asset_income + Age + Age2 + Family_Unit_Size + 
-                         Marital_Status + family_type + received_transfer_past + provided_transfer_past  + Year_bins,
+                         Marital_Status + family_type  + Year_bins,
                       data = psid_clean %>% filter(Race_Head == "Black") %>%  filter(Received_Support_Indicator == 1))
 summary(black_transfer_in)
 
 white_transfer_out = lm(log_transfer_out ~ log_nonasset_income + log_asset_income + Age + Age2 + Family_Unit_Size + 
-                          Marital_Status + family_type + received_transfer_past + provided_transfer_past  + Year_bins,
+                          Marital_Status + family_type  + Year_bins,
                        data = psid_clean %>% filter(Race_Head == "White") %>%  filter(Provided_Support_Indicator == 1))
 summary(white_transfer_out)
 
 white_transfer_in = lm(log_transfer_in ~ log_nonasset_income + log_asset_income + Age + Age2 + Family_Unit_Size + 
-                         Marital_Status + family_type + received_transfer_past + provided_transfer_past  + Year_bins,
+                         Marital_Status + family_type + Year_bins,
                       data = psid_clean %>% filter(Race_Head == "White") %>%  filter(Received_Support_Indicator == 1))
 summary(white_transfer_in)
 
