@@ -101,4 +101,10 @@ transfer_amount_results = data.frame(white_transfer_out = white_transfer_out$coe
 write.csv(transfer_probit_results, "../data/transfer_probit_results.csv")
 write.csv(transfer_amount_results, "../data/transfer_amount_results.csv")
 
+##############################################################################################################################################################################
+# Tuition Help
+##############################################################################################################################################################################
+
+
+
 

@@ -121,12 +121,50 @@ tas_clean <- tas_raw %>%
       !is.na(degree_type) & one_semester ~ Tuition_Amount * 2,
       TRUE ~ NA_real_
     )) %>% 
+  mutate(
+      # financial constraint — cant afford
+      cant_afford = as.integer(
+        Reason_Not_In_College_1 == 8 |
+          Reason_Not_In_College_2 == 8 |
+          Reason_Not_In_College_3 == 8),
+      # opportunity cost constraint
+      needed_to_work = as.integer(
+        Reason_Not_In_College_1 == 9 |
+          Reason_Not_In_College_2 == 9 |
+          Reason_Not_In_College_3 == 9),
+      # any financial/economic constraint
+      financially_constrained = as.integer(
+        cant_afford == 1 | needed_to_work == 1)) %>% 
   mutate(Year_bins_edu = case_when(
     Year %in% 2004:2010 ~ "2004-2010",
     Year %in% 2011:2020 ~ "2011-2020",
     TRUE ~ NA_character_
   )) %>% 
   left_join(psid_clean %>% rename(Marital_Status_Parents = Marital_Status) %>% select(Family_ID, Survey_Year, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type))
+
+#######################################################################################
+# Tuition Amount
+#######################################################################################
+tuition_amount = tas_clean %>% 
+  select(Family_ID, ID_number, Survey_Year, Individual_Weight, Year, Enrollment_Status, college_status, Part_or_Full_Time_Student, Degree_Type_Seeking_1, Degree_Type_Seeking_2, 
+         First_Month_Attended_1, First_Year_Attended_1, Last_Month_Attended_1, Last_Year_Attended_1,
+         First_Month_Attended_2, First_Year_Attended_2, Last_Month_Attended_2, Last_Year_Attended_2, Tuition_Amount,
+         degree_type, tuition_annual) %>% 
+  # Full Time Student and Full Year Enrolled
+  filter(Part_or_Full_Time_Student == 1,
+         !is.na(Individual_Weight),
+         tuition_annual > 0,
+         college_status != "No college") %>% 
+  group_by(degree_type) %>% 
+  summarize(
+    avg_tuition = weighted.mean(tuition_annual, w = Individual_Weight, na.rm = TRUE),
+    n = n(),
+    .groups = "drop")
+            
+#######################################################################################
+# Some Summaries
+#######################################################################################
+
 
 
 tas_clean_summary = tas_clean %>% 
@@ -153,124 +191,14 @@ tas_clean_college = tas_clean %>%
   summarize(n = n(),
             received_help_tuition = mean(Help_Tuition_Amount_Parents))
 
-#######################################################################################
-# Tuition Amount
-#######################################################################################
-tuition_amount = tas_clean %>% 
-  select(Family_ID, ID_number, Survey_Year, Individual_Weight, Year, Enrollment_Status, college_status, Part_or_Full_Time_Student, Degree_Type_Seeking_1, Degree_Type_Seeking_2, 
-         First_Month_Attended_1, First_Year_Attended_1, Last_Month_Attended_1, Last_Year_Attended_1,
-         First_Month_Attended_2, First_Year_Attended_2, Last_Month_Attended_2, Last_Year_Attended_2, Tuition_Amount,
-         degree_type, tuition_annual) %>% 
-  # Full Time Student and Full Year Enrolled
-  filter(Part_or_Full_Time_Student == 1,
-         !is.na(Individual_Weight),
-         tuition_annual > 0,
-         college_status != "No college") %>% 
-  group_by(degree_type) %>% 
+
+# empirical moment from TAS
+cant_afford_moment <- tas_clean %>%
+  filter(Race %in% c(1, 2),
+         Enrollment_Status %in% c(1, 2, 3, 4, 5, 95)) %>%  # not enrolled
+  group_by(Race) %>%
   summarize(
-    avg_tuition = weighted.mean(tuition_annual, w = Individual_Weight, na.rm = TRUE),
-    n = n(),
-    .groups = "drop")
-            
-#######################################################################################
-# Help with tuition
-#######################################################################################
-tas_clean_college = tas_clean %>% 
-  arrange(Family_ID, ID_number) %>% 
-  select(Family_ID, ID_number, Survey_Year, Race, Race_2nd, Enrollment_Status,Tuition_Amount, Help_Tuition, 
-         Help_Tuition_Amount_Parents, Help_Tuition_Percent_Parents, Student_Loan_Amount, Help_Student_Loan, 
-         Help_Student_Loan_Amount_Parents, Help_Student_Loan_Percent_Parents,
-         Total_Income_Head_Spouse, Total_Family_Income, Family_Unit_Size) %>% 
-  filter(Race %in% c(1,2),  Race_2nd == 0) %>% 
-  filter(!is.na(Help_Tuition_Amount_Parents), !is.na(Tuition_Amount))
-
-avgs = tas_clean_college %>% 
-  group_by(Race, college_status) %>% 
-  summarize(n = n(),
-            avg_help = mean(Help_Tuition_Amount_Parents),
-            avg_tution = mean(Tuition_Amount))
+    pct_cant_afford = weighted.mean(cant_afford, Individual_Weight, na.rm = TRUE)
+  )
 
 
-# Probability of receiving help with tuition
-tuition_prob_black = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size, 
-                   data = tas_clean_college, family = binomial(link = "probit"), weights = Individual_Weight)
-
-tuition_prob_white = glm(Help_Tuition ~ Total_Income_Head_Spouse + Family_Unit_Size, 
-                         data = tas_clean_college, family = binomial(link = "probit"), weights = Individual_Weight)
-
-# Amount of help with tuition
-tuition_help = lm(Help_Tuition_Amount_Parents ~ Race + Total_Income_Head_Spouse + Family_Unit_Size, data = tas_clean_college)
-
-
-# 
-# mutate(
-#   # started before reference year, or in january of reference year
-#   enrolled_full_start_1 = (First_Year_Attended_1 < Year | (First_Year_Attended_1 == Year & First_Month_Attended_1 == 1)),
-#   enrolled_full_start_2 = (First_Year_Attended_2 < Year |(First_Year_Attended_2 == Year & First_Month_Attended_2 == 1)),
-#   # still enrolled (0), ended after reference year,
-#   # or ended in december of reference year
-#   enrolled_full_end_1 = (Last_Year_Attended_1 > Year  | Last_Year_Attended_1 == 0 |(Last_Year_Attended_1 == Year & Last_Month_Attended_1 == 12) ),
-#   enrolled_full_end_2 = (Last_Year_Attended_2 > Year  | Last_Year_Attended_2 == 0 | (Last_Year_Attended_2 == Year & Last_Month_Attended_2 == 12)),
-#   
-#   # second enrollment picks up within 2 months of first ending
-#   # (allows for semester break between same-type institutions)
-#   transfer_contiguous = (!is.na(First_Year_Attended_2) & !is.na(Last_Year_Attended_1)  &
-#                            ((First_Year_Attended_2 == Last_Year_Attended_1 &First_Month_Attended_2 <= Last_Month_Attended_1 + 2) |
-#                               # enrollment 1 ends december, enrollment 2 starts january next year
-#                               (First_Year_Attended_2 == Last_Year_Attended_1 + 1 & Last_Month_Attended_1  == 12 &  First_Month_Attended_2 == 1))),
-#   
-#   full_year_4yr = case_when(
-#     # single enrollment, primary is 4yr and spans full year
-#     Degree_Type_Seeking_1 == 2 & enrolled_full_start_1 & enrolled_full_end_1 ~ 1,
-#     # single enrollment, secondary is 4yr and spans full year
-#     Degree_Type_Seeking_2 == 2 & enrolled_full_start_2 & enrolled_full_end_2 ~ 1,
-#     # transfer case: both enrollments are 4yr and together span full year
-#     Degree_Type_Seeking_1 == 2 & Degree_Type_Seeking_2 == 2 & enrolled_full_start_1 & enrolled_full_end_2 & transfer_contiguous ~ 1,
-#     TRUE ~ 0),
-#   full_year_2yr = case_when(
-#     # single enrollment, primary is 2yr and spans full year
-#     Degree_Type_Seeking_1 == 1 & enrolled_full_start_1 & enrolled_full_end_1 ~ 1,
-#     # single enrollment, secondary is 2yr and spans full year
-#     Degree_Type_Seeking_2 == 1 & enrolled_full_start_2 & enrolled_full_end_2 ~ 1,
-#     # transfer case: both enrollments are 2yr and together span full year
-#     Degree_Type_Seeking_1 == 1 & Degree_Type_Seeking_2 == 1 & enrolled_full_start_1 & enrolled_full_end_2   & transfer_contiguous ~ 1,
-#     TRUE ~ 0 ),
-#   
-#   # started fall semester of reference year, still enrolled at year end
-#   one_semester_start_1 = (First_Year_Attended_1 == Year & First_Month_Attended_1 %in% c(8, 9) &
-#                             (Last_Year_Attended_1 == 0 | Last_Year_Attended_1 > Year)),
-#   one_semester_start_2 = (First_Year_Attended_2 == Year &First_Month_Attended_2 %in% c(8, 9) &
-#                             (Last_Year_Attended_2 == 0 | Last_Year_Attended_2 > Year)),
-#   
-#   # enrolled from start of year, graduated spring semester
-#   one_semester_grad_1 = ((First_Year_Attended_1 < Year |(First_Year_Attended_1 == Year & First_Month_Attended_1 == 1)) & 
-#                            Last_Year_Attended_1 == Year & Last_Month_Attended_1 %in% c(5, 6)),
-#   one_semester_grad_2 = ( (First_Year_Attended_2 < Year |(First_Year_Attended_2 == Year & First_Month_Attended_2 == 1)) &
-#                             Last_Year_Attended_2 == Year & Last_Month_Attended_2 %in% c(5, 6)),
-#   
-#   # annualized tuition and degree type assignment
-#   tuition_annual = case_when( full_year_4yr == 1 & (Degree_Type_Seeking_1 == 2 | Degree_Type_Seeking_2 == 2) ~ Tuition_Amount,
-#                               full_year_2yr == 1 & (Degree_Type_Seeking_1 == 1 | Degree_Type_Seeking_2 == 1) ~ Tuition_Amount,
-#                               one_semester_start_1 ~ Tuition_Amount * 2,
-#                               one_semester_start_1 ~ Tuition_Amount * 2,
-#                               one_semester_start_2 ~ Tuition_Amount * 2,
-#                               one_semester_start_2 ~ Tuition_Amount * 2,
-#                               one_semester_grad_1  ~ Tuition_Amount * 2,
-#                               one_semester_grad_1  ~ Tuition_Amount * 2,
-#                               one_semester_grad_2  ~ Tuition_Amount * 2,
-#                               one_semester_grad_2  ~ Tuition_Amount * 2,
-#                               TRUE ~ NA_real_),
-#   
-#   degree_type = case_when(
-#     full_year_4yr == 1                                        ~ "4yr",
-#     full_year_2yr == 1                                        ~ "2yr",
-#     (one_semester_start_1 | one_semester_grad_1) & 
-#       Degree_Type_Seeking_1 == 2                              ~ "4yr",
-#     (one_semester_start_1 | one_semester_grad_1) & 
-#       Degree_Type_Seeking_1 == 1                              ~ "2yr",
-#     (one_semester_start_2 | one_semester_grad_2) & 
-#       Degree_Type_Seeking_2 == 2                              ~ "4yr",
-#     (one_semester_start_2 | one_semester_grad_2) & 
-#       Degree_Type_Seeking_2 == 1                              ~ "2yr",
-#     TRUE ~ NA_character_
-#   )) %>% 

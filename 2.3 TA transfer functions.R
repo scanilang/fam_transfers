@@ -16,12 +16,14 @@ tas_clean = read.csv('../data/tas_clean.csv')
 white_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
                          Marital_Status + family_type + Year_bins_edu,
                        family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "White"))
+                       data = tas_clean %>% filter(Race_Head == "White", Enrollment_Status %in% c(9, 10),  # currently enrolled
+                                                   Part_or_Full_Time_Student == 1))
 summary(white_probit_edu)
 
 black_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income  + Head_College  + Year_bins_edu,
                        family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "Black"))
+                       data = tas_clean %>% filter(Race_Head == "Black", Enrollment_Status %in% c(9, 10),  # currently enrolled
+                                                   Part_or_Full_Time_Student == 1))
 summary(black_probit_edu)
 
 
@@ -29,15 +31,43 @@ summary(black_probit_edu)
 # Step 2: OLS
 ##############################################################################################################################################################################
 
-white_transfer_edu = lm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+white_transfer_edu = lm(log(Help_Tuition_Amount_Parents) ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
                          Marital_Status + family_type + degree_type + as.factor(Year),
                        data = tas_clean %>% filter(Race_Head == "White", Help_Tuition_Amount_Parents > 0, !is.na(degree_type)))
 summary(white_transfer_edu)
 
-black_transfert_edu = lm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type + degree_type  + as.factor(Year),
-                       data = tas_clean %>% filter(Race_Head == "Black", Help_Tuition_Amount_Parents > 0, !is.na(degree_type)))
-summary(black_transfert_edu)
+pooled_transfer_edu = lm(
+  log(Help_Tuition_Amount_Parents) ~
+    log_nonasset_income +
+    log_asset_income +
+    Head_College +
+    family_type +
+    degree_type +
+    Race_Head +
+    as.factor(Year),#+        # identifies intercept shift
+ #   Year_bins_edu,
+  data = tas_clean %>%
+    filter(Race_Head %in% c("White", "Black"),
+           Help_Tuition_Amount_Parents > 0,
+           !is.na(degree_type),
+           !is.na(family_type),
+           !is.na(Head_College),
+           !is.na(Race_Head),
+           !is.na(Year_bins_edu),
+           !is.na(Individual_Weight)),
+  weights = Individual_Weight
+)
+
+summary(pooled_transfer_edu)
+
+# extract race intercept shift
+race_shift = coef(pooled_transfer_edu)["Race_HeadWhite"]
+
+
+# 
+# black_transfer_edu = lm(log(Help_Tuition_Amount_Parents) ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College  + degree_type  + as.factor(Year),
+#                        data = tas_clean %>% filter(Race_Head == "Black", Help_Tuition_Amount_Parents > 0, !is.na(degree_type)))
+# summary(black_transfer_edu)
 
 
 
