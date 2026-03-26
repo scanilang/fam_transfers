@@ -61,9 +61,13 @@ using DataFrames
 if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_probit_results.csv", DataFrame)
     transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_amount_results.csv", DataFrame)
+    edu_transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/edu_transfer_probit_results.csv", DataFrame)
+    edu_transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/edu_transfer_amount_results.csv", DataFrame)
 else
     transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_probit_results.csv", DataFrame)
     transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_amount_results.csv", DataFrame)
+    edu_transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_probit_results.csv", DataFrame)
+    edu_transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_amount_results.csv", DataFrame)
 end
 
 β_white_probit_in   = Tuple(transfer_probit.white_probit_in)
@@ -75,7 +79,42 @@ end
 β_black_transfer_out  = Tuple(transfer_amount.black_transfer_out)
 β_white_transfer_out     = Tuple(transfer_amount.white_transfer_out)
 
+β_white_edu_probit_in   = Tuple(edu_transfer_probit.white_edu_probit_in)
+β_black_edu_probit_in   = Tuple(edu_transfer_probit.black_edu_probit_in)
+β_white_edu_transfer_in  = Tuple(edu_transfer_amount.white_edu_transfer_in)
+β_black_edu_transfer_in = Tuple(edu_transfer_amount.black_edu_transfer_in)
 
+##################### Transfer education 
+function edu_transfer_prob(β_white_edu_probit_in, β_black_edu_probit_in, r, n, m, j, y, a_income, e, t, past_in, past_out)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0
+    f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
+
+    if r == 2 
+        val = β_black_edu_probit_in[1] + β_black_edu_probit_in[2]*log(y) + β_black_edu_probit_in[3]*log(a_income) + β_black_edu_probit_in[4]*age +  
+        β_black_edu_probit_in[5]*age^2 + β_black_edu_probit_in[6]*n + β_black_edu_probit_in[7]*e_0 + β_black_edu_probit_in[8]*e_1 + β_black_edu_probit_in[9]*m
+        β_black_edu_probit_in[10]*f_1 + β_black_edu_probit_in[11]*f_2 + β_black_edu_probit_in[12]*f_3 + β_black_edu_probit_in[13]*past_in + β_black_edu_probit_in[14]*past_out + β_white_edu_probit_in[20]
+    else
+        val = β_white_edu_probit_in[1] + β_white_edu_probit_in[2]*log(y) + β_white_edu_probit_in[3]*log(a_income) + β_white_edu_probit_in[4]*age + 
+        β_white_edu_probit_in[5]*age^2 + β_white_edu_probit_in[6]*n + β_white_edu_probit_in[7]*e_0 + β_white_edu_probit_in[8]*e_1 + β_white_edu_probit_in[9]*m
+        β_white_edu_probit_in[10]*f_1 + β_white_edu_probit_in[11]*f_2 + β_white_edu_probit_in[12]*f_3 + β_white_edu_probit_in[13]*past_in + β_white_edu_probit_in[14]*past_out + β_white_edu_probit_in[20]
+    end    
+             
+end
+
+function edu_transfer_in(β_white_edu_transfer_in, β_black_edu_transfer_in, r, n, m, j, y, a_income, e, t)
+
+    if r == 2
+
+    else
+    
+    end
+end
+
+##################### Transfer out
 function shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
@@ -117,6 +156,7 @@ function transfers_out_amount(β_white_transfer_out, β_black_transfer_out,r,n,m
     return exp(val)
 end
 
+##################### Transfer in
 function shocks_in_prob(β_white_probit_in, β_black_probit_in,r,n,m,j,y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
