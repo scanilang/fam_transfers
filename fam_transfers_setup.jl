@@ -27,15 +27,25 @@ end
 ###############################################################################################
 # Income
 ###############################################################################################
+if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
+    income_results = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/income_results.csv", DataFrame)
+else
 
+    income_results = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/income_results.csv", DataFrame)
+end
 
-function g(r,j,e, n)
-    mid_age = (22.5 + 4*j)
+β_black_income   = Tuple(income_results.black_income_process)
+β_white_income   = Tuple(income_results.white_income_process)
+
+function g(β_white_income,β_black_income, r,j,e, m)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
 
     if r == 2
-        g = 4.469 + 0.4817*mid_age - 0.01037*mid_age^2 + 0.00007375*mid_age^3 + 0.06854*n -0.08079
+        g = β_black_income[1] + β_black_income[2]*age + β_black_income[3]*age^2 + β_black_income[4]*age^3 + β_black_income[5]*e_0 + β_black_income[6]*e_1 + β_black_income[7]*m + β_black_income[26]
     else
-        g = 9.509 +  0.1356*mid_age - 0.001852*(mid_age^2)  + 0.000005373*(mid_age^3) + 0.07886*n + 0.04664
+        g = β_white_income[1] + β_white_income[2]*age + β_white_income[3]*age^2 + β_white_income[4]*age^3 + β_white_income[5]*e_0 + β_white_income[6]*e_1 + β_white_income[7]*m + β_white_income[26]
     end
     return g
 end
@@ -102,7 +112,7 @@ function edu_transfer_prob(β_white_edu_probit_in, β_black_edu_probit_in, r, n,
         β_white_edu_probit_in[5]*age^2 + β_white_edu_probit_in[6]*n + β_white_edu_probit_in[7]*e_0 + β_white_edu_probit_in[8]*e_1 + β_white_edu_probit_in[9]*m
         β_white_edu_probit_in[10]*f_1 + β_white_edu_probit_in[11]*f_2 + β_white_edu_probit_in[12]*f_3 + β_white_edu_probit_in[13]*past_in + β_white_edu_probit_in[14]*past_out + β_white_edu_probit_in[20]
     end    
-             
+
 end
 
 function edu_transfer_in(β_white_edu_transfer_in, β_black_edu_transfer_in, r, n, m, j, y, a_income, e, t)

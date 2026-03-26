@@ -10,109 +10,33 @@ psid_clean = read.csv('../data/psid_clean.csv')
 
 psid_income_data = psid_clean %>% 
   filter(Age >= 18 & Age <= 60) %>% 
-  filter(log_labor_uiwc > 0) 
-
-#######################################################################################
-# Overlapping panel (STY 2004)
-#######################################################################################
-
-# three-period overlapping panel 
-psid_income_panel = psid_income_data %>%
-  mutate(Panel_Year = Year_first) %>%
-  full_join(psid_income_data %>% mutate(Panel_Year = Year_first - 2)) %>%
-  full_join(psid_income_data %>% mutate(Panel_Year = Year_first - 4)) %>%
-  group_by(ER30001, ER30002, Panel_Year) %>%
-  mutate(n = n(),
-         lag_income = if_else(lag(Year_first) == Year_first - 2, lag(sum_labor_uiwc), NA),
-         growth = (sum_labor_uiwc)/lag_income,
-         tag_growth = if_else(abs(growth) > 20 | abs(growth) < (1/20), 1, 0),
-         tag_remove = if_else(sum(tag_growth, na.rm  = T) > 0, 1, 0)) %>% 
-  ungroup() %>% 
-  select(ER30001, ER30002, Panel_Year, n, everything()) %>%
-  filter(n == 3, tag_remove == 0) %>%
-  arrange(ER30001, ER30002, Panel_Year, Year_first) 
-
-
-#Each panel begins in a year and consists of observations over that year and the next two years
-#when income data are present in all three years.
+  filter(log_labor_uiwc > 0)  %>% 
+ # filter( !(Employment_Status_Ind %in% 4:7))  %>%   # student, not permanently disabled, retired, house
+  mutate(Age3 = Age^3,
+         Marital_Status_Ind = if_else(Marital_Status == "Married", 1, 0)) 
 
 #######################################################################################
 # Deterministic component
 #######################################################################################
 
 # PSID data
-white_income_process <- lm(log_labor_uiwc_income~ as.factor(Year_first) + midpoint_age + midpoint_age2 + midpoint_age3 + Head_College + avg_FU_size, 
-                           data = psid_income_data %>% filter(Race_Head == "White"))
+white_income_process <- lm(log_labor_uiwc~  Age + Age2 + Age3 + Head_College + Marital_Status  + as.factor(Year), 
+                           data = psid_income_data %>% filter(Race_Head == "White", Labor_UIWC_Income > 500))
 
-black_income_process <- lm(log_labor_uiwc_income ~ as.factor(Year_first) + midpoint_age + midpoint_age2 + midpoint_age3 + Head_College + avg_FU_size, 
-                           data = psid_income_data %>% filter(Race_Head == "Black"))
+black_income_process <- lm(log_labor_uiwc ~ Age + Age2 + Age3 + Head_College + Marital_Status  + as.factor(Year), 
+                           data = psid_income_data %>% filter(Race_Head == "Black", Labor_UIWC_Income > 500))
 
-stargazer(white_income_process, black_income_process)
-
-# Overlapping three-period panel
-white_income_process_panel <- lm(log_labor_uiwc_income~ as.factor(Year_first) + midpoint_age + midpoint_age2 + midpoint_age3 + Head_College + avg_FU_size, 
-                                 data = psid_income_panel %>% filter(Race_Head == "White"))
-
-black_income_process_panel <- lm(log_labor_uiwc_income~ as.factor(Year_first) + midpoint_age + midpoint_age2 + midpoint_age3 + Head_College + avg_FU_size, 
-                                 data = psid_income_panel %>% filter(Race_Head == "Black"))
-
-stargazer(white_income_process_panel, black_income_process_panel)
+summary(white_income_process)
+summary(black_income_process)
 
 #######################################################################################
-# Idiosyncratic component panel
-#######################################################################################
-
-# Year coefficients
-year_coefs<-  data.frame(coef= attr(white_income_process_panel$coefficients, "names"), 
-                              White = white_income_process_panel$coefficients, 
-                              Black = black_income_process_panel$coefficients) %>%  
-  tibble::remove_rownames() %>% 
-  mutate(Year_first = if_else(grepl("Year", coef),str_sub(coef, -4,-1),coef ),
-         Year_first = if_else(Year_first == "(Intercept)", "1984", Year_first),
-         White = if_else(Year_first != "1984", White + white_income_process_panel$coefficients[1], White),
-         Black = if_else(Year_first != "1984", Black + black_income_process_panel$coefficients[1], Black)) %>% 
-  select(-coef) %>% 
-  pivot_longer(!Year_first, names_to = "Race_Head", values_to = "Year_coef") %>% 
-  mutate(Year_coef = round(Year_coef, 4),
-         Year_first = as.numeric(Year_first)) %>% 
-  as.data.frame(.) %>% 
-  filter(Year_first %in% 1984:2019)
-
-psid_income_panel = psid_income_panel %>% 
-  left_join(year_coefs) %>% # Year coef includes intercept
-  mutate(college_coef = case_when(Race_Head == "White" & Head_College == "No College" ~ white_income_process_panel$coefficients["Head_CollegeNo College"],
-                                  Race_Head == "White" & Head_College == "Some College" ~ white_income_process_panel$coefficients["Head_CollegeSome College"], 
-                                  Race_Head == "Black" & Head_College == "No College" ~ black_income_process_panel$coefficients["Head_CollegeNo College"],
-                                  Race_Head == "Black" & Head_College == "Some College" ~ black_income_process_panel$coefficients["Head_CollegeSome College"],
-                                  TRUE ~ 0),
-          g = if_else(Race_Head == "White", Year_coef +midpoint_age*white_income_process_panel$coefficients["midpoint_age"] + midpoint_age2*white_income_process_panel$coefficients["midpoint_age2"] + 
-                       midpoint_age3*white_income_process_panel$coefficients["midpoint_age3"]  + college_coef + 
-                       avg_FU_size*white_income_process_panel$coefficients["avg_FU_size"],
-                       Year_coef +midpoint_age*black_income_process_panel$coefficients["midpoint_age"] + midpoint_age2*black_income_process_panel$coefficients["midpoint_age2"] + 
-                       midpoint_age3*black_income_process_panel$coefficients["midpoint_age3"]  + college_coef + 
-                       avg_FU_size*black_income_process_panel$coefficients["avg_FU_size"]),
-         u = log_labor_uiwc_income -g) %>% 
-  group_by(ER30001, ER30002, Panel_Year) %>% 
-  mutate(lagu = lag(u)) %>% 
-  ungroup()
-  
-# AR (1) process
-(white_ar1 <- lm(u ~ 0 + lagu, data = psid_income_panel %>% filter(Race_Head == "White")))
-(pooled_variance <- var(residuals(white_ar1), na.rm = TRUE))
-(sd_ar1 = sqrt(pooled_variance))
-
-(black_ar1 <- lm(u ~ 0 + lagu, data = psid_income_panel %>% filter(Race_Head == "Black")))
-(pooled_variance <- var(residuals(black_ar1), na.rm = TRUE))
-(sd_ar1 = sqrt(pooled_variance))
-
-#######################################################################################
-# Idiosyncratic component no panel
+# Idiosyncratic component
 #######################################################################################
 
 # Year coefficients
 year_coefs<-  data.frame(coef= attr(white_income_process$coefficients, "names"), 
-                         White = white_income_process$coefficients, 
-                         Black = black_income_process$coefficients) %>%  
+                              White = white_income_process$coefficients, 
+                              Black = black_income_process$coefficients) %>%  
   tibble::remove_rownames() %>% 
   mutate(Year_first = if_else(grepl("Year", coef),str_sub(coef, -4,-1),coef ),
          Year_first = if_else(Year_first == "(Intercept)", "1984", Year_first),
@@ -125,36 +49,92 @@ year_coefs<-  data.frame(coef= attr(white_income_process$coefficients, "names"),
   as.data.frame(.) %>% 
   filter(Year_first %in% 1984:2019)
 
-psid_income_data = psid_income_data %>% 
+psid_income_panel = psid_income_data %>% 
   left_join(year_coefs) %>% # Year coef includes intercept
   mutate(college_coef = case_when(Race_Head == "White" & Head_College == "No College" ~ white_income_process$coefficients["Head_CollegeNo College"],
                                   Race_Head == "White" & Head_College == "Some College" ~ white_income_process$coefficients["Head_CollegeSome College"], 
                                   Race_Head == "Black" & Head_College == "No College" ~ black_income_process$coefficients["Head_CollegeNo College"],
                                   Race_Head == "Black" & Head_College == "Some College" ~ black_income_process$coefficients["Head_CollegeSome College"],
                                   TRUE ~ 0),
-         g = if_else(Race_Head == "White", Year_coef +midpoint_age*white_income_process$coefficients["midpoint_age"] + midpoint_age2*white_income_process$coefficients["midpoint_age2"] + 
-                       midpoint_age3*white_income_process$coefficients["midpoint_age3"]  + college_coef + 
-                       avg_FU_size*white_income_process$coefficients["avg_FU_size"],
-                     Year_coef +midpoint_age*black_income_process$coefficients["midpoint_age"] + midpoint_age2*black_income_process$coefficients["midpoint_age2"] + 
-                       midpoint_age3*black_income_process$coefficients["midpoint_age3"]  + college_coef + 
-                       avg_FU_size*black_income_process$coefficients["avg_FU_size"]),
-         u = log_labor_uiwc_income -g,
-         Year_lag = Year_first - 2) %>% 
+          g = if_else(Race_Head == "White", Year_coef +Age*white_income_process$coefficients["Age"] + Age2*white_income_process$coefficients["Age2"] + 
+                        Age3*white_income_process$coefficients["Age3"]  + college_coef + 
+                        Marital_Status_Ind*white_income_process$coefficients["Marital_StatusMarried"],
+                       Year_coef +Age*black_income_process$coefficients["Age"] + Age2*black_income_process$coefficients["Age2"] + 
+                        Age3*black_income_process$coefficients["Age3"]  + college_coef + 
+                        Marital_Status_Ind*black_income_process$coefficients["Marital_StatusMarried"]),
+         u = log_labor_uiwc -g) %>% 
   group_by(ER30001, ER30002) %>% 
+  arrange(ER30001, ER30002, Survey_Year) %>%
   mutate(lagu = lag(u),
-         lagu = if_else(lag(Year_first) ==Year_lag, lagu, NA )) %>% 
+         lag_years = Survey_Year - lag(Survey_Year)) %>% 
   ungroup()
-
+  
 # AR (1) process
-(white_ar1 <- lm(u ~ 0 + lagu, data = psid_income_data %>% filter(Race_Head == "White")))
-(pooled_variance <- var(residuals(white_ar1), na.rm = TRUE))
-(sd_ar1 = sqrt(pooled_variance))
+# 1-year lag (pre-1997 annual waves)
+white_ar1_1yr <- lm(u ~ 0 + lagu,
+                    data = psid_income_panel %>%
+                      filter(Race_Head == "White",
+                             lag_years == 1))
 
-(black_ar1 <- lm(u ~ 0 + lagu, data = psid_income_data %>% filter(Race_Head == "Black")))
-(pooled_variance <- var(residuals(black_ar1), na.rm = TRUE))
-(sd_ar1 = sqrt(pooled_variance))
+# 2-year lag (post-1997 biannual waves)
+white_ar1_2yr <- lm(u ~ 0 + lagu,
+                    data = psid_income_panel %>%
+                      filter(Race_Head == "White",
+                             lag_years == 2))
+
+# 1-year lag (pre-1997 annual waves)
+black_ar1_1yr <- lm(u ~ 0 + lagu,
+                    data = psid_income_panel %>%
+                      filter(Race_Head == "Black",
+                             lag_years == 1))
+
+# 2-year lag (post-1997 biannual waves)
+black_ar1_2yr <- lm(u ~ 0 + lagu,
+                    data = psid_income_panel %>%
+                      filter(Race_Head == "Black",
+                             lag_years == 2))
+
+# annual persistence
+rho_white <- sqrt(0.651)   # = 0.807
+rho_black <- sqrt(0.596)   # = 0.772
 
 
+# annual shock variance
+var_2yr_white <- var(residuals(white_ar1_2yr), na.rm = TRUE)
+var_2yr_black <- var(residuals(black_ar1_2yr), na.rm = TRUE)
+
+sigma_white <- sqrt(var_2yr_white / (1 + rho_white^2))
+sigma_black <- sqrt(var_2yr_black / (1 + rho_black^2))
+
+# summary table
+data.frame(
+  Race  = c("White", "Black"),
+  rho   = round(c(rho_white, rho_black), 3),
+  sigma = round(c(sigma_white, sigma_black), 3)
+)
+
+
+# (white_ar1 <- lm(u ~ 0 + lagu, data = psid_income_panel %>% filter(Race_Head == "White")))
+# (pooled_variance <- var(residuals(white_ar1), na.rm = TRUE))
+# (sd_ar1 = sqrt(pooled_variance))
+# 
+# (black_ar1 <- lm(u ~ 0 + lagu, data = psid_income_panel %>% filter(Race_Head == "Black")))
+# (pooled_variance <- var(residuals(black_ar1), na.rm = TRUE))
+# (sd_ar1 = sqrt(pooled_variance))
+
+
+#######################################################################################
+# Export Results
+#######################################################################################
+income_results = data.frame(white_income_process = white_income_process$coefficients,
+                            black_income_process = black_income_process$coefficients)
+
+write.csv(income_results, "../data/income_results.csv")
+
+
+#######################################################################################
+# Consumption Floor
+#######################################################################################
 
 ##### 
 

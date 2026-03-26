@@ -16,8 +16,8 @@ function model_create(;
 
     # Income variables
     zpnts = 7,  # Number of income grid points
-    ρ = [0.952, 0.948],   # [white, black]
-    eps_std = [0.207, 0.207],
+    ρ = [0.807, 0.772],   # [white, black]
+    eps_std = [0.436, 0.535],
 
     # Asset variables
     apnts = 13,
