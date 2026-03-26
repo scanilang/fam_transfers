@@ -62,17 +62,22 @@ psid_clean = psid_ind %>%
          Head_Enrolled = if_else((Head_Last_Year_Attend_College == Year |Head_Last_Year_Attend_College == 96 ) , 1, 0),
          Spouse_Enrolled = if_else((Spouse_Last_Year_Attend_College == Year |Spouse_Last_Year_Attend_College == 96 ), 1, 0),
          # Family Types
+         Father_Education_Head = if_else(Father_Education_Head %in% c(9,99), NA, Father_Education_Head),
+         Mother_Education_Head = if_else(Mother_Education_Head %in% c(9,99), NA, Mother_Education_Head),
+         Father_Education_Spouse = if_else(Father_Education_Spouse %in% c(9,99), NA, Father_Education_Spouse),
+         Mother_Education_Spouse = if_else(Mother_Education_Spouse %in% c(9,99), NA, Mother_Education_Spouse),
          parent_educ_head = pmax(Father_Education_Head,  Mother_Education_Head, na.rm = TRUE),
          parent_educ_spouse = pmax(Father_Education_Spouse, Mother_Education_Spouse, na.rm = TRUE),
-         head_side = case_when(
-           Parents_Poor_Head == 1 | parent_educ_head %in% c(1,2) ~ "low",
-           parent_educ_head == 3                                  ~ "mid",
-           parent_educ_head >= 4                                  ~ "high",
+         # less than college, some college or nonacademic training, college or more
+         head_side = case_when( 
+           Parents_Poor_Head == 1 | parent_educ_head %in% 1:4 ~ "low",
+           parent_educ_head %in% 5:6                                 ~ "mid",
+           parent_educ_head >= 7                                  ~ "high",
            TRUE ~ NA_character_),
          spouse_side = case_when(
-           parent_educ_spouse %in% c(1,2) ~ "low",
-           parent_educ_spouse == 3        ~ "mid",
-           parent_educ_spouse >= 4        ~ "high",
+           parent_educ_spouse %in% 1:4 ~ "low",
+           parent_educ_spouse == 5:6       ~ "mid",
+           parent_educ_spouse >= 7      ~ "high",
            TRUE ~ NA_character_),
          family_type = case_when(
            # married households — both sides observable
@@ -266,15 +271,15 @@ psid_clean = psid_ind %>%
   ungroup()
 
 write.csv(psid_clean, "../data/psid_clean.csv")
-
-View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,
-                           Received_ChildSupport_Spouse, Received_ChildSupport_Head , Received_Alimony_Head, Age_Youngest,Have_Dependents, rec_al, rec_cs, prov_al, prov_cs) %>% 
-       filter((prov_cs > 0 | prov_al > 0 | rec_cs > 0 | rec_al > 0)))
-
-View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Asset_Income_Dividends_Reported_Head_raw, Asset_Income_Dividends_Head, Asset_Income_Interest_Head , Asset_Income_TrustFund_Head , Asset_Income_Business_Head ,
-                           Asset_Income_Rent_Head,Asset_Income_Dividends_Spouse ,Asset_Income_Interest_Spouse , Asset_Income_TrustFund_Spouse , Labor_Income_Plus_Business_Head,
-                           Asset_Income_Business_Spouse,Asset_Income_Business_Head_Spouse ,Asset_Income_All_Head , Asset_Income_All_Spouse, Total_Asset_Income) %>% filter(is.na(Total_Asset_Income)))
-###################################################
+# 
+# View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,
+#                            Received_ChildSupport_Spouse, Received_ChildSupport_Head , Received_Alimony_Head, Age_Youngest,Have_Dependents, rec_al, rec_cs, prov_al, prov_cs) %>% 
+#        filter((prov_cs > 0 | prov_al > 0 | rec_cs > 0 | rec_al > 0)))
+# 
+# View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Asset_Income_Dividends_Reported_Head_raw, Asset_Income_Dividends_Head, Asset_Income_Interest_Head , Asset_Income_TrustFund_Head , Asset_Income_Business_Head ,
+#                            Asset_Income_Rent_Head,Asset_Income_Dividends_Spouse ,Asset_Income_Interest_Spouse , Asset_Income_TrustFund_Spouse , Labor_Income_Plus_Business_Head,
+#                            Asset_Income_Business_Spouse,Asset_Income_Business_Head_Spouse ,Asset_Income_All_Head , Asset_Income_All_Spouse, Total_Asset_Income) %>% filter(is.na(Total_Asset_Income)))
+# ###################################################
 # Testing 
 ###################################################
 
