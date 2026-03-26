@@ -76,7 +76,7 @@ psid_clean = psid_ind %>%
            TRUE ~ NA_character_),
          spouse_side = case_when(
            parent_educ_spouse %in% 1:4 ~ "low",
-           parent_educ_spouse == 5:6       ~ "mid",
+           parent_educ_spouse %in% 5:6       ~ "mid",
            parent_educ_spouse >= 7      ~ "high",
            TRUE ~ NA_character_),
          family_type = case_when(
@@ -248,7 +248,7 @@ psid_clean = psid_ind %>%
          Family_Transfers_Net = Received_Support_Amount_Head_Spouse - Provided_Family_Support_NetACS,
          Total_Income_Head_Spouse = (Total_Labor_Income_Plus_Business + Total_Asset_Income +  Total_Public_Transfers + Total_UnempWorkers_Comp + Received_ChildSupport_Alimony +
                                        Total_Retirement_Income- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse)),
-         ChildSupport_Alimony_Adjustment = Received_ChildSupport_Alimony- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse),
+         ChildSupport_Alimony_Adjustment = Received_ChildSupport_Alimony- (Provided_ChildSupport_Amount_Head_Spouse + Provided_Alimony_Amount_Head_Spouse),
          Total_NonAsset_Income = Total_UnempWorkers_Comp + Total_Labor_Income_Plus_Business + Total_Public_Transfers+ Total_Retirement_Income + ChildSupport_Alimony_Adjustment) %>% 
   # Attempt to figure out Youngest Child in or out of FU
   group_by(ER30001, ER30002) %>% 
@@ -266,6 +266,7 @@ psid_clean = psid_ind %>%
                   Unemployment_Comp_Spouse, Workers_Comp_Spouse, Total_NonAsset_Income,
                   Total_Family_Income, Total_Taxable_Income_Head_Spouse, Total_Transfer_Head_Spouse, Total_Taxable_Income_Other,
                   Total_Transfers_Other, Total_Social_Security_Other, School_Expenses, Other_School_Expenses, Total_Education_Expenditure), ~ . *ratio_2010)) %>% 
+  arrange(ER30001, ER30002, Survey_Year) %>%
   group_by(ER30001, ER30002) %>%
   mutate(received_transfer_past = cumsum(Received_Support_Amount_Head_Spouse > 0) > 0 & row_number() > 1,
          provided_transfer_past = cumsum(Provided_Family_Support_NetACS > 0) > 0 & row_number() > 1) %>% 
@@ -278,10 +279,10 @@ psid_clean = psid_ind %>%
          log_transfer_in = log(Received_Support_Amount_Head_Spouse + 1),
          log_transfer_out = log(Provided_Family_Support_NetACS + 1),
          Age2 = Age^2,
-         Year_bins = paste(1983 + ((Year-1983) %/% 10) * 10, 
-                         1992 + ((Year-1983) %/% 10) * 10, 
-                         sep = "-"),
-         Year_bins = forcats::fct_relevel(Year_bins, c("2013-2022", "2003-2012", "1993-2002", "1983-1992")),
+         # Year_bins = paste(1983 + ((Year-1983) %/% 10) * 10, 
+         #                 1992 + ((Year-1983) %/% 10) * 10, 
+         #                 sep = "-"),
+         # Year_bins = forcats::fct_relevel(Year_bins, c("2013-2022", "2003-2012", "1993-2002", "1983-1992")),
          Year_bins = case_when(
            Year %in% 1984:1993 ~ "1984-1993",   # includes 90-91 recession
            Year %in% 1994:2007 ~ "1994-2007",   # long expansion
@@ -289,21 +290,21 @@ psid_clean = psid_ind %>%
            Year %in% 2013:2021 ~ "2013-2021",   # recovery and COVID
            TRUE ~ NA_character_
          ),
-         Birth_Cohort = paste((Year_Born %/% 10) * 10, 
-                            (Year_Born %/% 10) * 10 + 9, 
-                            sep = "-"),
-         # regrouping first and last group
-       Birth_Cohort = case_when(Birth_Cohort == "2000-2009"~ "1990-1999",
-                                Birth_Cohort == "1910-1919"~ "1920-1929", 
-                                Birth_Cohort == "1900-1909"~ "1920-1929", 
-                                TRUE ~ Birth_Cohort),
-       Birth_Cohort = forcats::fct_relevel(Birth_Cohort, c("1970-1979", "1980-1989", "1990-1999", "1960-1969", "1950-1959","1940-1949","1930-1939", "1920-1929")),
-       Birth_Cohort = case_when(
-         Birth_Year < 1940              ~ "pre-1940",    # collapse thin early cohorts
-         Birth_Year %in% 1940:1954      ~ "1940-1954",
-         Birth_Year %in% 1955:1969      ~ "1955-1969",
-         Birth_Year %in% 1970:1984      ~ "1970-1984",
-         Birth_Year >= 1985             ~ "1985-plus",
+       #   Birth_Cohort = paste((Year_Born %/% 10) * 10, 
+       #                      (Year_Born %/% 10) * 10 + 9, 
+       #                      sep = "-"),
+       #   # regrouping first and last group
+       # Birth_Cohort = case_when(Birth_Cohort == "2000-2009"~ "1990-1999",
+       #                          Birth_Cohort == "1910-1919"~ "1920-1929", 
+       #                          Birth_Cohort == "1900-1909"~ "1920-1929", 
+       #                          TRUE ~ Birth_Cohort),
+       # Birth_Cohort = forcats::fct_relevel(Birth_Cohort, c("1970-1979", "1980-1989", "1990-1999", "1960-1969", "1950-1959","1940-1949","1930-1939", "1920-1929")),
+         Birth_Cohort = case_when(
+           Year_Born < 1940              ~ "pre-1940",    # collapse thin early cohorts
+           Year_Born %in% 1940:1954      ~ "1940-1954",
+           Year_Born %in% 1955:1969      ~ "1955-1969",
+           Year_Born %in% 1970:1984      ~ "1970-1984",
+           Year_Born >= 1985             ~ "1985-plus",
          TRUE ~ NA_character_
        )) 
   

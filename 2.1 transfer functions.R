@@ -38,21 +38,21 @@ white_probit_out = glm(Provided_Support_Indicator ~log_nonasset_income + log_ass
 summary(white_probit_out)
 
 stargazer(white_probit_out, black_probit_out,white_probit_in, black_probit_in )
-
-# marginal effects
-models <- list(  white_probit_out = white_probit_out,  black_probit_out = black_probit_out, white_probit_in = white_probit_in, black_probit_in = black_probit_in)
-
-mfx_results <- lapply(models, function(model) summary(margins(model)))
-options(scipen = 999)
-mfx_results_afe = data.frame(mfx_results$white_probit_out$AME,  mfx_results$black_probit_out$AME,
-                             mfx_results$white_probit_in$AME,  mfx_results$black_probit_in$AME)
-
-library(xtable)
-print(xtable(mfx_results_afe, digits = c(0,4,4,4,4)))
-
-mfx_results_se = data.frame(mfx_results$white_probit_out$SE,  mfx_results$black_probit_out$SE,
-                             mfx_results$white_probit_in$SE,  mfx_results$black_probit_in$SE)
-print(xtable(mfx_results_se, digits = c(0,4,4,4,4)))
+# 
+# # marginal effects
+# models <- list(  white_probit_out = white_probit_out,  black_probit_out = black_probit_out, white_probit_in = white_probit_in, black_probit_in = black_probit_in)
+# 
+# mfx_results <- lapply(models, function(model) summary(margins(model)))
+# options(scipen = 999)
+# mfx_results_afe = data.frame(mfx_results$white_probit_out$AME,  mfx_results$black_probit_out$AME,
+#                              mfx_results$white_probit_in$AME,  mfx_results$black_probit_in$AME)
+# 
+# library(xtable)
+# print(xtable(mfx_results_afe, digits = c(0,4,4,4,4)))
+# 
+# mfx_results_se = data.frame(mfx_results$white_probit_out$SE,  mfx_results$black_probit_out$SE,
+#                              mfx_results$white_probit_in$SE,  mfx_results$black_probit_in$SE)
+# print(xtable(mfx_results_se, digits = c(0,4,4,4,4)))
 
 ##############################################################################################################################################################################
 # Step 2: OLS
