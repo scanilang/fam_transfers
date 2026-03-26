@@ -56,14 +56,13 @@ end
 ###############################################################################################
 # Transfer Functions
 ###############################################################################################
-
-
+using DataFrames
 if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
-    transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_probit.csv", DataFrame)
-    transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_amount.csv", DataFrame)
+    transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_probit_results.csv", DataFrame)
+    transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_amount_results.csv", DataFrame)
 else
-    transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_probit.csv", DataFrame)
-    transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_amount.csv", DataFrame)
+    transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_probit_results.csv", DataFrame)
+    transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_amount_results.csv", DataFrame)
 end
 
 β_white_probit_in   = Tuple(transfer_probit.white_probit_in)
@@ -75,70 +74,85 @@ end
 β_black_transfer_out  = Tuple(transfer_amount.black_transfer_out)
 β_white_transfer_out     = Tuple(transfer_amount.white_transfer_out)
 
-struct ModelCoefs
-    β_white_probit_in::NTuple{19,Float64}
-    β_black_probit_in::NTuple{19,Float64}
-    β_white_probit_out::NTuple{19,Float64}
-    β_black_probit_out::NTuple{19,Float64}
-    β_white_transfer_in::NTuple{13,Float64}
-    β_black_transfer_in::NTuple{13,Float64}
-    β_black_transfer_out::NTuple{13,Float64}
-    β_white_transfer_out::NTuple{13,Float64}
-end
-
-coefs = ModelCoefs(
-    β_white_probit_in,
-    β_black_probit_in,
-    β_white_probit_out,
-    β_black_probit_out,
-    β_white_transfer_in,
-    β_black_transfer_in,
-    β_black_transfer_out,
-    β_white_transfer_out
-)
 
 
-function shocks_out_prob(r,n,m, j, y, past_in, past_out)
-    mid_age = 22.5 + 4*j
+function shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, j, y, a_income, e, t, past_in, past_out)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0
+    f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
+
     if r == 2 
-        val = - 2.25826 - 0.11377 * n - 0.04575 *m + (0.01669455 *mid_age)  - (0.0005308654 *mid_age^2) - past_in*0.50769 + past_out* 1.45337 +log(y) *0.32320 -0.53053 - 1.87701 # transfer min, income max 180000
+        val = β_black_probit_out[1] + β_black_probit_out[2]*log(y) + β_black_probit_out[3]*log(a_income +1 ) + β_black_probit_out[4]*age +  
+        β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_1 + β_black_probit_out[9]*m
+        β_black_probit_out[10]*f_1 + β_black_probit_out[11]*f_2 + β_black_probit_out[12]*f_3 + β_black_probit_out[13]*past_in + β_black_probit_out[14]*past_out + β_white_probit_out[20]
     else
-        val = -4.463962 - 0.09363 *n + 0.18690*m + (0.0397062151 *mid_age)  - (0.0003243744 *mid_age^2) -past_in*0.08483 + past_out*1.73401 + log(y) * 0.24322 - 1.71271 + 1.04578 # # transfer min, income max 180000
-
+        val = β_white_probit_out[1] + β_white_probit_out[2]*log(y) + β_white_probit_out[3]*log(a_income +1 ) + β_white_probit_out[4]*age + 
+        β_white_probit_out[5]*age^2 + β_white_probit_out[6]*n + β_white_probit_out[7]*e_0 + β_white_probit_out[8]*e_1 + β_white_probit_out[9]*m
+        β_white_probit_out[10]*f_1 + β_white_probit_out[11]*f_2 + β_white_probit_out[12]*f_3 + β_white_probit_out[13]*past_in + β_white_probit_out[14]*past_out + β_white_probit_out[20]
     end
 
     return cdf(Normal(), val)
 end
 
-function transfers_out_amount(r,n,m, j, y)
-    mid_age = 22.5 + 4*j
+function transfers_out_amount(β_white_transfer_out, β_black_transfer_out,r,n,m, j, y, a_income, e, t)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0
+    f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
 
-    if r == 2
-        return exp(-0.9451237 - 0.12296*n - 0.23850*m + (0.0419915484 *mid_age) - (0.0003287593 *mid_age^2) +log(y) * 0.62658 + 0.19965 + 0.17305) # transfer of at least 200, income max 180000
+    if r == 2 
+        val = β_black_transfer_out[1] + β_black_transfer_out[2]*log(y) + β_black_transfer_out[3]*log(a_income +1 ) + β_black_transfer_out[4]*age + 
+        β_black_transfer_out[5]*age^2 + β_black_transfer_out[6]*n + β_black_transfer_out[7]*e_0 + β_black_transfer_out[8]*e_1 + β_black_transfer_out[9]*m
+        β_black_transfer_out[10]*f_1 + β_black_transfer_out[11]*f_2 + β_black_transfer_out[12]*f_3 + β_black_transfer_out[14]
     else
-        return exp(-3.00629 -0.134370 *n - 0.054113*m + (0.0441335028 *mid_age)  - (0.0003151821 *mid_age^2) +log(y) * 0.788086 + 0.714118 + 0.212124 ) # transfer of at least 200, income max 180000
+        val = β_white_transfer_out[1] + β_white_transfer_out[2]*log(y) + β_white_transfer_out[3]*log(a_income +1 ) + β_white_transfer_out[4]*age + 
+        β_white_transfer_out[5]*age^2 + β_white_transfer_out[6]*n + β_white_transfer_out[7]*e_0 + β_white_transfer_out[8]*e_1 + β_white_transfer_out[9]*m
+        β_white_transfer_out[10]*f_1 + β_white_transfer_out[11]*f_2 + β_white_transfer_out[12]*f_3 + β_white_transfer_out[14]
     end
-
 end
 
-function shocks_in_prob(r,n,m,j,y, past_in, past_out)
-    mid_age = 22.5 + 4*j
+function shocks_in_prob(β_white_probit_in, β_black_probit_in,r,n,m,j,y, a_income, e, t, past_in, past_out)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0
+    f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
 
-    if r == 2
-      val = 1.458929 - 0.09941*n - 0.15475*m  - (0.1211193934 *mid_age)  + (0.0007720176 *mid_age^2) +past_in* 1.46933 - past_out*0.06697 - log(y) * 0.18051 + 2.96273 - 0.27434 # transfer of at least 200
+    if r == 2 
+        val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income) + β_black_probit_in[4]*age +  
+        β_black_probit_in[5]*age^2 + β_black_probit_in[6]*n + β_black_probit_in[7]*e_0 + β_black_probit_in[8]*e_1 + β_black_probit_in[9]*m
+        β_black_probit_in[10]*f_1 + β_black_probit_in[11]*f_2 + β_black_probit_in[12]*f_3 + β_black_probit_in[13]*past_in + β_black_probit_in[14]*past_out + β_white_probit_in[20]
     else
-      val = 3.600208 -0.04262*n + 0.06188*m - (0.1096650013 *mid_age) + (0.0006706238 *mid_age^2) + past_in*1.58966 - past_out*0.32242 - log(y) * 0.30893 + 1.82198 + 0.07752 # transfer of at least 200, income max 180000
+        val = β_white_probit_in[1] + β_white_probit_in[2]*log(y) + β_white_probit_in[3]*log(a_income) + β_white_probit_in[4]*age + 
+        β_white_probit_in[5]*age^2 + β_white_probit_in[6]*n + β_white_probit_in[7]*e_0 + β_white_probit_in[8]*e_1 + β_white_probit_in[9]*m
+        β_white_probit_in[10]*f_1 + β_white_probit_in[11]*f_2 + β_white_probit_in[12]*f_3 + β_white_probit_in[13]*past_in + β_white_probit_in[14]*past_out + β_white_probit_in[20]
     end
+
     return cdf(Normal(), val)
 end
 
-function transfers_in_amount(r,n,m,j,y)
-    mid_age = 22.5 + 4*j
+function transfers_in_amount(β_white_transfer_in, β_black_transfer_in,r,n,m,j,y, a_income, e, t)
+    age = j + 17
+    e_1 = e == 1 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0
+    f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
 
-    if r == 2
-        return exp(3.128561 - 0.06088*n - 0.17337*m + (0.098899763 *mid_age)  - (0.001003151*mid_age^2) + log(y) * 0.11010 + 0.89794 -0.13826) # transfers of at least 200
+    if r == 2 
+        val = β_black_transfer_in[1] + β_black_transfer_in[2]*log(y) + β_black_transfer_in[3]*log(a_income +1 ) + β_black_transfer_in[4]*age + 
+        β_black_transfer_in[5]*age^2 + β_black_transfer_in[6]*n + β_black_transfer_in[7]*e_0 + β_black_transfer_in[8]*e_1 + β_black_transfer_in[9]*m
+        β_black_transfer_in[10]*f_1 + β_black_transfer_in[11]*f_2 + β_black_transfer_in[12]*f_3 + β_black_transfer_in[14]
     else
-        return exp(3.041345 - 0.07338*n + 0.11436 *m + (0.0518311507 *mid_age)  - (0.0005127471  *mid_age^2) + log(y) *0.30850 +0.31655 + 0.44215) # transfer of at least 200, income max 180000
+        val = β_white_transfer_in[1] + β_white_transfer_in[2]*log(y) + β_white_transfer_in[3]*log(a_income +1 ) + β_white_transfer_in[4]*age + 
+        β_white_transfer_in[5]*age^2 + β_white_transfer_in[6]*n + β_white_transfer_in[7]*e_0 + β_white_transfer_in[8]*e_1 + β_white_transfer_in[9]*m
+        β_white_transfer_in[10]*f_1 + β_white_transfer_in[11]*f_2 + β_white_transfer_in[12]*f_3 + β_white_transfer_in[14]
     end
 end
 
