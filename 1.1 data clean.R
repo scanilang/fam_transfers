@@ -248,7 +248,8 @@ psid_clean = psid_ind %>%
          Family_Transfers_Net = Received_Support_Amount_Head_Spouse - Provided_Family_Support_NetACS,
          Total_Income_Head_Spouse = (Total_Labor_Income_Plus_Business + Total_Asset_Income +  Total_Public_Transfers + Total_UnempWorkers_Comp + Received_ChildSupport_Alimony +
                                        Total_Retirement_Income- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse)),
-         ChildSupport_Alimony_Adjustment = Received_ChildSupport_Alimony- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse) ) %>% 
+         ChildSupport_Alimony_Adjustment = Received_ChildSupport_Alimony- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse),
+         Total_NonAsset_Income = Total_UnempWorkers_Comp + Total_Labor_Income_Plus_Business + Total_Public_Transfers+ Total_Retirement_Income + ChildSupport_Alimony_Adjustment) %>% 
   # Attempt to figure out Youngest Child in or out of FU
   group_by(ER30001, ER30002) %>% 
   mutate(Most_Recent_Child_Born = if_else(Child_Born_Head_Spouse %in% 1:3| Child_Born_Head_Only %in% 1:3 | Child_Born_Spouse_Only %in% 1:3, Year, NA_integer_),
@@ -262,15 +263,53 @@ psid_clean = psid_ind %>%
   mutate(across(c(ChildSupport_Alimony_Adjustment,Received_Support_Amount_Head_Spouse, Provided_Family_Support_NetACS, Family_Transfers_Net,
                   Total_Retirement_Income,Total_Asset_Income, Total_Income_Head_Spouse,
                   Total_Labor_Income_Plus_Business, Total_Public_Transfers , Unemployment_Comp_Head, Workers_Comp_Head, 
-                  Unemployment_Comp_Spouse, Workers_Comp_Spouse, 
+                  Unemployment_Comp_Spouse, Workers_Comp_Spouse, Total_NonAsset_Income,
                   Total_Family_Income, Total_Taxable_Income_Head_Spouse, Total_Transfer_Head_Spouse, Total_Taxable_Income_Other,
                   Total_Transfers_Other, Total_Social_Security_Other, School_Expenses, Other_School_Expenses, Total_Education_Expenditure), ~ . *ratio_2010)) %>% 
   group_by(ER30001, ER30002) %>%
   mutate(received_transfer_past = cumsum(Received_Support_Amount_Head_Spouse > 0) > 0 & row_number() > 1,
          provided_transfer_past = cumsum(Provided_Family_Support_NetACS > 0) > 0 & row_number() > 1) %>% 
-  ungroup()
+  ungroup() %>% 
+  # Variables for transfer functions
+  mutate(Provided_Support_Indicator = if_else(Provided_Family_Support_NetACS > 0, 1, 0),
+         Received_Support_Indicator = if_else(Received_Support_Amount_Head_Spouse > 0, 1, 0),
+         log_asset_income = log(Total_Asset_Income + 1),
+         log_nonasset_income = log(Total_NonAsset_Income + 1),
+         log_transfer_in = log(Received_Support_Amount_Head_Spouse + 1),
+         log_transfer_out = log(Provided_Family_Support_NetACS + 1),
+         Age2 = Age^2,
+         Year_bins = paste(1983 + ((Year-1983) %/% 10) * 10, 
+                         1992 + ((Year-1983) %/% 10) * 10, 
+                         sep = "-"),
+         Year_bins = forcats::fct_relevel(Year_bins, c("2013-2022", "2003-2012", "1993-2002", "1983-1992")),
+         Year_bins = case_when(
+           Year %in% 1984:1993 ~ "1984-1993",   # includes 90-91 recession
+           Year %in% 1994:2007 ~ "1994-2007",   # long expansion
+           Year %in% 2008:2012 ~ "2008-2012",   # financial crisis and aftermath
+           Year %in% 2013:2021 ~ "2013-2021",   # recovery and COVID
+           TRUE ~ NA_character_
+         ),
+         Birth_Cohort = paste((Year_Born %/% 10) * 10, 
+                            (Year_Born %/% 10) * 10 + 9, 
+                            sep = "-"),
+         # regrouping first and last group
+       Birth_Cohort = case_when(Birth_Cohort == "2000-2009"~ "1990-1999",
+                                Birth_Cohort == "1910-1919"~ "1920-1929", 
+                                Birth_Cohort == "1900-1909"~ "1920-1929", 
+                                TRUE ~ Birth_Cohort),
+       Birth_Cohort = forcats::fct_relevel(Birth_Cohort, c("1970-1979", "1980-1989", "1990-1999", "1960-1969", "1950-1959","1940-1949","1930-1939", "1920-1929")),
+       Birth_Cohort = case_when(
+         Birth_Year < 1940              ~ "pre-1940",    # collapse thin early cohorts
+         Birth_Year %in% 1940:1954      ~ "1940-1954",
+         Birth_Year %in% 1955:1969      ~ "1955-1969",
+         Birth_Year %in% 1970:1984      ~ "1970-1984",
+         Birth_Year >= 1985             ~ "1985-plus",
+         TRUE ~ NA_character_
+       )) 
+  
 
 write.csv(psid_clean, "../data/psid_clean.csv")
+
 # 
 # View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,
 #                            Received_ChildSupport_Spouse, Received_ChildSupport_Head , Received_Alimony_Head, Age_Youngest,Have_Dependents, rec_al, rec_cs, prov_al, prov_cs) %>% 
