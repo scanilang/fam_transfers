@@ -6,8 +6,7 @@ library(tidyverse)
 tas_raw <- read.csv("../data/transition_adulthood.csv")
 cpi_data <- openxlsx::read.xlsx("../data/bls_CPI.xlsx") %>% 
   mutate(ratio_2010 = 218.056 / annual.avg) 
-psid_clean <- read.csv("../data/psid_clean.csv")
-psid_hh <- read.csv("../data/famtransfer_famfile.csv")
+psid_clean <- read.csv("../data/psid_clean.csv") 
 
 #######################################################################################
 # Clean data 
@@ -122,7 +121,7 @@ tas_clean <- tas_raw %>%
       TRUE ~ NA_real_
     )
   ) %>% 
-  left_join(psid_clean %>% select(Family_ID, Survey_Year, Total_Income_Head_Spouse, Total_Family_Income, Family_Unit_Size))
+  left_join(psid_clean %>% select(Family_ID, Survey_Year, Total_Income_Head_Spouse, Total_Family_Income, Family_Unit_Size, family_type))
 
 
 tas_clean_summary = tas_clean %>% 

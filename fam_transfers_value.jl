@@ -72,20 +72,34 @@ function Vj(vjp1, model, j)
 end
 
 function EV_jp1(model, vjp1, j, R, m, n, e, past_in, past_out, ap1, i_z)
-    (; Pimat, prob_shocks, zpnts) = model
+    (; Pimat, zpnts) = model
     jp1 = j + 1
+    a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
         pi_z =Pimat[i_z, i_zp1]
-        for shock_in in 1:2, shock_out in 1:2, past_in_next in 1:2, past_out_next in 1:2
+        y = g(R, j, r, n) * z_grid[R][i_z]
+        for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             if past_in == 2 && past_in_next == 1
                 continue  
             end
             if past_out == 2 && past_out_next == 1
                 continue 
             end
-            expected_value += pi_z * prob_shocks[jp1, R, m, n, e, i_zp1, shock_in, shock_out, past_in_next, past_out_next] * vjp1[shock_in, shock_out, past_in_next, past_out_next](ap1, i_zp1)
+            shock_out= shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, jp1, y_next, a_income, e, t, past_in_next, past_out) 
+            shock_in = shocks_in_prob(β_white_probit_in, β_black_probit_in, n, m, j, y_next, a_income, e, t, past_in_next, past_out)
+            if shock_in_next == 2
+                shock_in_next_val = shock_in
+            else
+                shock_in_next_val = 1 - shock_in
+            end
+            if shock_out_next == 2
+                shock_out_next_val = shock_out
+            else
+                shock_out_next_val = 1 - shock_out
+            end
+            expected_value += pi_z * shock_out_next_val *  shock_out_next_val* vjp1[shock_in, shock_out, past_in_next, past_out_next](ap1, i_zp1)
         end
     end
 
@@ -133,20 +147,33 @@ function Wj(wjp1, model, j)
 end
 
 function EW_jp1(model, wjp1_itp, j, R, m, n, e, past_in, past_out, ap1, i_z)
-    (; survival_risk, prob_shocks ) = model
+    (; survival_risk ) = model
     jp1 = j + 1
-    sjp1 = survival_risk[jp1, R]
+    a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
-    for shock_in in 1:2, shock_out in 1:2, past_in_next in 1:2, past_out_next in 1:2
-        if past_in == 2 && past_in_next == 1
-            continue 
+    y_next = g(R, j, e, n) * z_grid[R][i_z]
+    for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
+            if past_in == 2 && past_in_next == 1
+                continue  
+            end
+            if past_out == 2 && past_out_next == 1
+                continue 
+            end
+            shock_out= shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, jp1, y_next, a_income, e, t, past_in_next, past_out) 
+            shock_in = shocks_in_prob(β_white_probit_in, β_black_probit_in, n, m, j, y_next, a_income, e, t, past_in_next, past_out)
+            if shock_in_next == 2
+                shock_in_next_val = shock_in
+            else
+                shock_in_next_val = 1 - shock_in
+            end
+            if shock_out_next == 2
+                shock_out_next_val = shock_out
+            else
+                shock_out_next_val = 1 - shock_out
+            end
+            expected_value += shock_out_next_val * shock_out_next_val* wjp1_itp[shock_in, shock_out, past_in_next, past_out_next](ap1, i_z)
         end
-        if past_out == 2 && past_out_next == 1
-            continue  
-        end
-        expected_value += prob_shocks[jp1, R, m, n, e, i_z, shock_in, shock_out, past_in_next, past_out_next] * wjp1_itp[shock_in, shock_out, past_in_next, past_out_next](ap1, i_z)
-    end
 
-    return expected_value * sjp1
+    return expected_value
 end

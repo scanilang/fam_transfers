@@ -6,12 +6,11 @@ library(stargazer)
 # Read in clean data
 #######################################################################################
 
-psid_model_data = read.csv('../../data/psid_model_data.csv')
+psid_clean = read.csv('../data/psid_clean.csv')
 
-psid_income_data = psid_model_data %>% 
-  filter(midpoint_age >= 22 & midpoint_age <= 60) %>% 
-  group_by(Race_Head, Year_first) %>% 
-  filter(log_labor_uiwc_income > 0) 
+psid_income_data = psid_clean %>% 
+  filter(Age >= 18 & Age <= 60) %>% 
+  filter(log_labor_uiwc > 0) 
 
 #######################################################################################
 # Overlapping panel (STY 2004)

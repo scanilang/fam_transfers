@@ -28,7 +28,8 @@ end
 # Income
 ###############################################################################################
 
-function g(r,j,n)
+
+function g(r,j,e, n)
     mid_age = (22.5 + 4*j)
 
     if r == 2
@@ -75,7 +76,6 @@ end
 β_white_transfer_out     = Tuple(transfer_amount.white_transfer_out)
 
 
-
 function shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
@@ -114,6 +114,7 @@ function transfers_out_amount(β_white_transfer_out, β_black_transfer_out,r,n,m
         β_white_transfer_out[5]*age^2 + β_white_transfer_out[6]*n + β_white_transfer_out[7]*e_0 + β_white_transfer_out[8]*e_1 + β_white_transfer_out[9]*m
         β_white_transfer_out[10]*f_1 + β_white_transfer_out[11]*f_2 + β_white_transfer_out[12]*f_3 + β_white_transfer_out[14]
     end
+    return exp(val)
 end
 
 function shocks_in_prob(β_white_probit_in, β_black_probit_in,r,n,m,j,y, a_income, e, t, past_in, past_out)
@@ -154,6 +155,7 @@ function transfers_in_amount(β_white_transfer_in, β_black_transfer_in,r,n,m,j,
         β_white_transfer_in[5]*age^2 + β_white_transfer_in[6]*n + β_white_transfer_in[7]*e_0 + β_white_transfer_in[8]*e_1 + β_white_transfer_in[9]*m
         β_white_transfer_in[10]*f_1 + β_white_transfer_in[11]*f_2 + β_white_transfer_in[12]*f_3 + β_white_transfer_in[14]
     end
+    return exp(val)
 end
 
 ###############################################################################################

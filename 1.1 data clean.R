@@ -245,6 +245,7 @@ psid_clean = psid_ind %>%
                                              Survey_Year %in% 1994:2004 & Age_recode < 62 &(Age_Spouse < 62| Age_Spouse == 0) ~ Total_Retirement_Income,
                                              Survey_Year %in% 1994:2004 & Age_recode >= 62 | (Age_Spouse >= 62 | Age_Spouse == 0)~ Total_Retirement_Income+ Social_Security_Total_Family),
          # Summary
+         Labor_UIWC_Income = Total_Labor_Income_Plus_Business + Total_UnempWorkers_Comp, 
          Family_Transfers_Net = Received_Support_Amount_Head_Spouse - Provided_Family_Support_NetACS,
          Total_Income_Head_Spouse = (Total_Labor_Income_Plus_Business + Total_Asset_Income +  Total_Public_Transfers + Total_UnempWorkers_Comp + Received_ChildSupport_Alimony +
                                        Total_Retirement_Income- (Provided_ChildSupport_Amount_Head_Spouse - Provided_Alimony_Amount_Head_Spouse)),
@@ -261,7 +262,7 @@ psid_clean = psid_ind %>%
   # CPI adjustment
   left_join(cpi_data %>% select(year, ratio_2010), by = c("Year" = "year")) %>% 
   mutate(across(c(ChildSupport_Alimony_Adjustment,Received_Support_Amount_Head_Spouse, Provided_Family_Support_NetACS, Family_Transfers_Net,
-                  Total_Retirement_Income,Total_Asset_Income, Total_Income_Head_Spouse,
+                  Total_Retirement_Income,Total_Asset_Income, Total_Income_Head_Spouse,Labor_UIWC_Income,
                   Total_Labor_Income_Plus_Business, Total_Public_Transfers , Unemployment_Comp_Head, Workers_Comp_Head, 
                   Unemployment_Comp_Spouse, Workers_Comp_Spouse, Total_NonAsset_Income,
                   Total_Family_Income, Total_Taxable_Income_Head_Spouse, Total_Transfer_Head_Spouse, Total_Taxable_Income_Other,
@@ -306,7 +307,8 @@ psid_clean = psid_ind %>%
            Year_Born %in% 1970:1984      ~ "1970-1984",
            Year_Born >= 1985             ~ "1985-plus",
          TRUE ~ NA_character_
-       )) 
+       ),
+       log_labor_uiwc = log(Labor_UIWC_Income + 1))
   
 
 write.csv(psid_clean, "../data/psid_clean.csv")
