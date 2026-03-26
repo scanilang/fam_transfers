@@ -21,7 +21,8 @@ tas_clean <- tas_raw %>%
          across(starts_with("Gifts_Inheritance"), ~ na_if(na_if(., 9999998), 9999999)),
          across(starts_with("Tuition_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
          Tuition_Amount = Tuition_Amount * ratio_2010,
-         Student_Loan_Amount = Student_Loan_Amount * ratio_2010) %>%
+         Student_Loan_Amount = Student_Loan_Amount * ratio_2010,
+         Help_Tuition = if_else(Help_Tuition == 1, 1, 0)) %>%
   mutate(college_status = case_when(Enrollment_Status == 9 ~ "Enrolled, no prior degree",
                                     Enrollment_Status == 10 ~ "Enrolled, prior degree",
                                     Enrollment_Status == 11 ~ "Enrolled, college degree",
@@ -119,9 +120,8 @@ tas_clean <- tas_raw %>%
       !is.na(degree_type) & full_year    ~ Tuition_Amount,
       !is.na(degree_type) & one_semester ~ Tuition_Amount * 2,
       TRUE ~ NA_real_
-    )
-  ) %>% 
-  left_join(psid_clean %>% select(Family_ID, Survey_Year, Total_Income_Head_Spouse, Total_Family_Income, Family_Unit_Size, family_type))
+    )) %>% 
+  left_join(psid_clean %>% rename(Marital_Status_Parents = Marital_Status) %>% select(Family_ID, Survey_Year, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type))
 
 
 tas_clean_summary = tas_clean %>% 

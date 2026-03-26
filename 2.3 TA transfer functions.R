@@ -13,24 +13,34 @@ tas_clean = read.csv('../data/tas_clean.csv')
 # Step 1: Probit
 ##############################################################################################################################################################################
 
-student_probit = glm(
-  Received_Any_Support ~ 
-    log_parental_income +
-    log_parental_asset_income +
-    Race +
-    degree_type +
-    Cohort,
-  family = binomial(link = "probit"),
-  data = tas_clean %>% 
-    filter(Race %in% c(1,2), 
-           Enrollment_Status >= 3,
-           Enrollment_Status < 99),
-  weights = Individual_Weight
-)
+white_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                         Marital_Status + family_type,
+                       family = binomial(link = "probit"), 
+                       data = tas_clean %>% filter(Race_Head == "White"))
+summary(white_probit_edu)
+
+black_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                         Marital_Status + family_type,
+                       family = binomial(link = "probit"), 
+                       data = tas_clean %>% filter(Race_Head == "Black"))
+summary(black_probit_edu)
+
 
 ##############################################################################################################################################################################
 # Step 2: OLS
 ##############################################################################################################################################################################
+
+white_transfer_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                         Marital_Status + family_type + degree_type,
+                       family = binomial(link = "probit"), 
+                       data = tas_clean %>% filter(Race_Head == "White"))
+summary(white_transfer_edu)
+
+black_transfert_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                         Marital_Status + family_type + degree_type,
+                       family = binomial(link = "probit"), 
+                       data = tas_clean %>% filter(Race_Head == "Black"))
+summary(black_transfert_edu)
 
 
 
