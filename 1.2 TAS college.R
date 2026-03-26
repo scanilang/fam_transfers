@@ -121,6 +121,11 @@ tas_clean <- tas_raw %>%
       !is.na(degree_type) & one_semester ~ Tuition_Amount * 2,
       TRUE ~ NA_real_
     )) %>% 
+  mutate(Year_bins_edu = case_when(
+    Year %in% 2004:2010 ~ "2004-2010",
+    Year %in% 2011:2020 ~ "2011-2020",
+    TRUE ~ NA_character_
+  )) %>% 
   left_join(psid_clean %>% rename(Marital_Status_Parents = Marital_Status) %>% select(Family_ID, Survey_Year, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type))
 
 

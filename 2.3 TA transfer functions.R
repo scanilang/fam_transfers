@@ -14,13 +14,12 @@ tas_clean = read.csv('../data/tas_clean.csv')
 ##############################################################################################################################################################################
 
 white_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type,
+                         Marital_Status + family_type + Year_bins_edu,
                        family = binomial(link = "probit"), 
                        data = tas_clean %>% filter(Race_Head == "White"))
 summary(white_probit_edu)
 
-black_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type,
+black_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income  + Head_College  + Year_bins_edu,
                        family = binomial(link = "probit"), 
                        data = tas_clean %>% filter(Race_Head == "Black"))
 summary(black_probit_edu)
@@ -31,13 +30,13 @@ summary(black_probit_edu)
 ##############################################################################################################################################################################
 
 white_transfer_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type + degree_type,
+                         Marital_Status + family_type + degree_type + as.factor(Year),
                        family = binomial(link = "probit"), 
                        data = tas_clean %>% filter(Race_Head == "White"))
 summary(white_transfer_edu)
 
 black_transfert_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type + degree_type,
+                         Marital_Status + family_type + degree_type  + as.factor(Year),
                        family = binomial(link = "probit"), 
                        data = tas_clean %>% filter(Race_Head == "Black"))
 summary(black_transfert_edu)
