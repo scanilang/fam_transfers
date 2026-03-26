@@ -29,16 +29,14 @@ summary(black_probit_edu)
 # Step 2: OLS
 ##############################################################################################################################################################################
 
-white_transfer_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+white_transfer_edu = lm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
                          Marital_Status + family_type + degree_type + as.factor(Year),
-                       family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "White"))
+                       data = tas_clean %>% filter(Race_Head == "White", Help_Tuition_Amount_Parents > 0, !is.na(degree_type)))
 summary(white_transfer_edu)
 
-black_transfert_edu = glm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+black_transfert_edu = lm(Help_Tuition_Amount_Parents ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
                          Marital_Status + family_type + degree_type  + as.factor(Year),
-                       family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "Black"))
+                       data = tas_clean %>% filter(Race_Head == "Black", Help_Tuition_Amount_Parents > 0, !is.na(degree_type)))
 summary(black_transfert_edu)
 
 
