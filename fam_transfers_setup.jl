@@ -37,7 +37,7 @@ end
 β_black_income   = Tuple(income_results.black_income_process)
 β_white_income   = Tuple(income_results.white_income_process)
 
-function g(β_white_income,β_black_income, r,j,e, m)
+function g( r,j,e, m)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
@@ -95,7 +95,7 @@ end
 β_black_edu_transfer_in = Tuple(edu_transfer_amount.black_edu_transfer_in)
 
 ##################### Transfer education 
-function edu_transfer_prob(β_white_edu_probit_in, β_black_edu_probit_in, r, n, m, j, y, a_income, e, t, past_in, past_out)
+function edu_transfer_prob( r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
@@ -125,7 +125,7 @@ function edu_transfer_in(β_white_edu_transfer_in, β_black_edu_transfer_in, r, 
 end
 
 ##################### Transfer out
-function shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, j, y, a_income, e, t, past_in, past_out)
+function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
@@ -146,7 +146,7 @@ function shocks_out_prob(β_white_probit_out, β_black_probit_out, n, m, j, y, a
     return cdf(Normal(), val)
 end
 
-function transfers_out_amount(β_white_transfer_out, β_black_transfer_out,r,n,m, j, y, a_income, e, t)
+function transfers_out_amount(r,n,m, j, y, a_income, e, t)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
@@ -167,7 +167,7 @@ function transfers_out_amount(β_white_transfer_out, β_black_transfer_out,r,n,m
 end
 
 ##################### Transfer in
-function shocks_in_prob(β_white_probit_in, β_black_probit_in,r,n,m,j,y, a_income, e, t, past_in, past_out)
+function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
@@ -188,7 +188,7 @@ function shocks_in_prob(β_white_probit_in, β_black_probit_in,r,n,m,j,y, a_inco
     return cdf(Normal(), val)
 end
 
-function transfers_in_amount(β_white_transfer_in, β_black_transfer_in,r,n,m,j,y, a_income, e, t)
+function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     age = j + 17
     e_1 = e == 1 ? 1 : 0
     e_0 = e == 0 ? 1 : 0

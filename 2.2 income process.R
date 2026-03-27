@@ -19,7 +19,6 @@ psid_income_data = psid_clean %>%
 # Deterministic component
 #######################################################################################
 
-# PSID data
 white_income_process <- lm(log_labor_uiwc~  Age + Age2 + Age3 + Head_College + Marital_Status  + as.factor(Year), 
                            data = psid_income_data %>% filter(Race_Head == "White", Labor_UIWC_Income > 500))
 
