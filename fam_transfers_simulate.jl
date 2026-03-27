@@ -1,3 +1,5 @@
+
+
 function famtransfer_simulate(model, n_agents, seed)
     
     # Model Parameters
@@ -51,7 +53,7 @@ function famtransfer_simulate(model, n_agents, seed)
             vj, pfj = get_itp_function(model, j, savepath);
         end
 
-         @threads for i in 1:n_agents
+        @threads for i in 1:n_agents
             # Skip dead agent
             if age[i,period] == -1
                 continue 
@@ -78,7 +80,7 @@ function famtransfer_simulate(model, n_agents, seed)
                 next_state = min(searchsortedfirst(z_pimat[R][idx,:], z_draws[i, period]), zpnts)
                 z_idx_mat[i, period] = next_state
                 z_mat[i, period] = z_grid[R][next_state] 
-                income[i,period] = g(R,t,j) * z_mat[i,period]
+                income[i,period] = g(r,j,e, m) * z_mat[i,period]
             elseif j == 121
                 # retirement and quarterly income
                 z_mat[i,period] = z_mat[i,prev_period]
