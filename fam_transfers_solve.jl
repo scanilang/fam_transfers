@@ -2,7 +2,7 @@ function solve_model(model)
     (; Race, marital_status, fam_size, ed_type, apnts, zpnts, tasks_idx) = model
 
     # Solve Retirement
-    Wj = zeros(Float64, 11, 2, 2, 6, 3, apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
+    Wj = zeros(Float64, 11, 2, 2, 6, 4, 3, apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
     PWj = copy(Wj)
     Wj[11, :, :, :, :, :, :, :, :, :, :], PWj[11, :, :, :, :, :, :, :, :, :, :]  = Wj_solve(nothing, model, 34)
 

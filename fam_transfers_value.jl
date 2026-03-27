@@ -43,13 +43,12 @@ function Vj(vjp1, model, j)
     (; beta, gamma, shock_resources) = model
 
     # Create interpolation object
-    v_itp = [LinearInterpolation((a_grid, z_grid[R]), vjp1[R, m, n, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
-                                for R in Race, m in marital_status, n in fam_size, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2];
+    v_itp = [LinearInterpolation((a_grid, z_grid[R]), vjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+                                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2];
 
     @threads for idx in eachindex(tasks_idx)
         (R, m, n, e, i_a, i_z) = tasks_idx[idx]
-        vjp1_itp = v_itp[R, m, n, e, :, :, :, :, :, :]
-
+        vjp1_itp = v_itp[R, m, n, t, e, :, :, :, :, :]
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
             resources = shock_resources[j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
@@ -115,8 +114,8 @@ function Wj(wjp1, model, j)
 
     # Create interpolation object
     if wjp1 != nothing
-        w_itp = [LinearInterpolation((a_grid, z_grid[R]), wjp1[R, m, n, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
-                for R in Race, m in marital_status, n in fam_size, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        w_itp = [LinearInterpolation((a_grid, z_grid[R]), wjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         w_itp = nothing
     end 
@@ -124,8 +123,7 @@ function Wj(wjp1, model, j)
     @threads for idx in eachindex(tasks_idx)
         (R, m, n, e, i_a, i_z) = tasks_idx[idx]
         sj = survival_risk[j, R]
-        wjp1_itp = w_itp[R, m, n, e, :, :, :, :, :, :]
-
+        wjp1_itp = w_itp[R, m, n, t, e, :, :, :, :, :]
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
             resources = shock_resources[j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
