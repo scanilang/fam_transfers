@@ -26,10 +26,6 @@ psid_children <- psid_ind %>%
          Relationship_Head, Age, Completed_Education, 
          Employment_Status_Ind) %>% 
   mutate(Year = Survey_Year - 1) %>%
-  filter(
-    (Relationship_Head %in% 30:43 & Survey_Year == 1994) | 
-      (Relationship_Head %in% 30:39 & Survey_Year != 1994)
-  ) %>%
   mutate(
     Age = case_when(
       Age %in% c(99, 999) ~ NA_real_,
@@ -45,22 +41,45 @@ psid_children <- psid_ind %>%
   arrange(ER30001, ER30002, Survey_Year) %>%
   group_by(ER30001, ER30002) %>%
   mutate(
-    # max education ever observed for this individual
-    max_education = max(Completed_Education, na.rm = TRUE),
-    max_education = if_else(is.infinite(max_education), NA_real_, max_education)
+    max_education     = max(Completed_Education, na.rm = TRUE),
+    max_education     = if_else(
+      is.infinite(max_education), NA_real_, max_education),
+    # education in next wave
+    edu_next          = lead(Completed_Education),
+    # first wave where education reached its max and 
+    # either stayed there or we lost track
+    reached_max       = Completed_Education == max_education & 
+      (is.na(edu_next) | edu_next <= Completed_Education),
+    # age when they first reached max education
+    age_at_max_edu    = if_else(reached_max, Age, NA_real_),
+    age_graduated     = min(age_at_max_edu, na.rm = TRUE),
+    age_graduated     = if_else(
+      is.infinite(age_graduated), NA_real_, age_graduated),
+    # backtrack enrollment
+    age_enrolled_est  = case_when(
+      max_education %in% 13:14 ~ age_graduated - 2,
+      max_education >= 15      ~ age_graduated - 4,
+      TRUE                     ~ NA_real_
+    )
   ) %>%
   ungroup() %>%
+  # filter to children in household
+  filter(
+    (Relationship_Head %in% 30:43 & Survey_Year == 1994) | 
+      (Relationship_Head %in% 30:39 & Survey_Year != 1994)
+  ) %>%
+  # summarize household level
   group_by(Family_ID, Survey_Year) %>%
   summarize(
     n_children_total       = n(),
     n_children_under18     = sum(Age < 18, na.rm = TRUE),
-    n_children_college_age = sum(Age >= 18 & Age <= 24, na.rm = TRUE),
+    n_children_college_age = sum(Age >= 18 & Age <= 26, na.rm = TRUE),
     oldest_child_age       = suppressWarnings(max(Age, na.rm = TRUE)),
     oldest_child_age       = if_else(
       is.infinite(oldest_child_age), NA_real_, oldest_child_age
     ),
     n_children_college     = sum(
-      Age >= 18 & Age <= 24 &
+      Age >= 18 & Age <= 26 &
         Completed_Education > 12 & Completed_Education <= 16,
       na.rm = TRUE
     ),
@@ -69,13 +88,13 @@ psid_children <- psid_ind %>%
     # child eventually completing 13-14 years → 2yr degree
     # child eventually completing 15-16 years → 4yr degree
     n_children_2yr         = sum(
-      Age >= 18 & Age <= 24 &
+      Age >= 18 & Age <= 26 &
         Completed_Education > 12 &
         max_education %in% 13:14,
       na.rm = TRUE
     ),
     n_children_4yr         = sum(
-      Age >= 18 & Age <= 24 &
+      Age >= 18 & Age <= 26 &
         Completed_Education > 12 &
         max_education >= 15,
       na.rm = TRUE
