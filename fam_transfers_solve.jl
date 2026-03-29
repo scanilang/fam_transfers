@@ -1,3 +1,5 @@
+
+
 function solve_model(model)
     (; Race, marital_status, fam_size, ed_type, apnts, zpnts, tasks_idx) = model
 
@@ -12,7 +14,7 @@ function solve_model(model)
     end
 
     # Solve Working
-    Vj = zeros(Float64, 11, 2, 2, 6, 3, apnts, zpnts, 2, 2, 2, 2)
+    Vj = zeros(Float64, 11, 2, 2, 6, 4, 3, apnts, zpnts, 2, 2, 2, 2)
     PFj = copy(Vj)
     Vj[23, :, :, :, :, :, :, :, :, :, :], PFj[23, :, :, :, :, :, :, :, :, :, :] = Vj_solve(Wj[23, :, :, :, :, :, :, :, :, :, :], model, 23)
 
