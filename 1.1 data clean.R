@@ -16,41 +16,6 @@ getmode <- function(v) {
 }
 
 #######################################################################################
-# Children
-#######################################################################################
-
-psid_children <- psid_ind %>%
-  select(ER30001, ER30002, Family_ID, Survey_Year,Relationship_Head, Age, Completed_Education, Employment_Status_Ind) %>% 
-  #left_join(psid_fam, multiple = 'all') %>%
-  mutate(Year = Survey_Year - 1) %>%
-  filter((Relationship_Head %in% 30:43 & Survey_Year == 1994)| (Relationship_Head %in% 30:39 & Survey_Year != 1994), 
-         Employment_Status_Ind == 7) %>%
-  mutate(
-    Age = case_when(
-      Age %in% c(99, 999) ~ NA_real_,
-      Age == 0             ~ NA_real_,
-      TRUE                 ~ as.numeric(Age)
-    ),
-    # child education completion
-    child_college = case_when(
-      Completed_Education >= 16 ~ "College Degree",      # 16+ years = BA or more
-      Completed_Education >= 13 ~ "Some College",         # 13-15 years = some college
-      Completed_Education <= 12 ~ "No College",           # 12 or less = HS or less
-      TRUE            ~ NA_character_
-    )) %>%
-  group_by(Family_ID, Survey_Year) %>%
-  summarize(
-    n_children_college_age  = sum(Age >= 18 & Age <= 24, na.rm = TRUE),
-    n_children_under18      = sum(Age < 18, na.rm = TRUE),
-    oldest_child_age        = suppressWarnings(max(Age, na.rm = TRUE)),
-    oldest_child_age        = if_else(
-      is.infinite(oldest_child_age), NA_real_, oldest_child_age
-    ),
-    n_children_college      = sum(Completed_Education > 12 & Completed_Education < 17, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-#######################################################################################
 # Main PSID HH
 #######################################################################################
 psid_clean = psid_ind %>% 
@@ -62,7 +27,7 @@ psid_clean = psid_ind %>%
   group_by(ER30001, ER30002) %>% 
   mutate(Age = if_else(Age == 999, NA, Age),
          Race_Head = case_when(Race_Head == 1 ~ "White",
-                               Race_Head == 2 ~ "Black",
+                               Race_Head== 2 ~ "Black",
                                TRUE ~ as.character(Race_Head)),
          Year_Born = if_else(Year_Born == 9999, NA, Year_Born),
          Year_Born = getmode(Year_Born),
