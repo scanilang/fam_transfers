@@ -41,24 +41,35 @@ psid_children <- psid_ind %>%
   arrange(ER30001, ER30002, Survey_Year) %>%
   group_by(ER30001, ER30002) %>%
   mutate(
-    max_education     = max(Completed_Education, na.rm = TRUE),
-    max_education     = if_else(
+    max_education = max(Completed_Education, na.rm = TRUE),
+    max_education = if_else(
       is.infinite(max_education), NA_real_, max_education),
-    # education in next wave
-    edu_next          = lead(Completed_Education),
-    # first wave where education reached its max and 
-    # either stayed there or we lost track
-    reached_max       = Completed_Education == max_education & 
-      (is.na(edu_next) | edu_next <= Completed_Education),
-    # age when they first reached max education
-    age_at_max_edu    = if_else(reached_max, Age, NA_real_),
-    age_graduated     = min(age_at_max_edu, na.rm = TRUE),
-    age_graduated     = if_else(
-      is.infinite(age_graduated), NA_real_, age_graduated),
-    # backtrack enrollment
-    age_enrolled_est  = case_when(
-      max_education %in% 13:14 ~ age_graduated - 2,
-      max_education >= 15      ~ age_graduated - 4,
+    
+    # first age where completed education reaches 2yr threshold (14 years)
+    reached_2yr       = Completed_Education >= 14,
+    age_at_2yr        = if_else(reached_2yr, Age, NA_real_),
+    age_graduated_2yr = min(age_at_2yr, na.rm = TRUE),
+    age_graduated_2yr = if_else(
+      is.infinite(age_graduated_2yr), NA_real_, age_graduated_2yr),
+    
+    # first age where completed education reaches 4yr threshold (16 years)
+    reached_4yr       = Completed_Education >= 16,
+    age_at_4yr        = if_else(reached_4yr, Age, NA_real_),
+    age_graduated_4yr = min(age_at_4yr, na.rm = TRUE),
+    age_graduated_4yr = if_else(
+      is.infinite(age_graduated_4yr), NA_real_, age_graduated_4yr),
+    
+    # graduation age based on eventual degree type
+    age_graduated = case_when(
+      max_education %in% 13:14 ~ age_graduated_2yr,
+      max_education >= 15      ~ age_graduated_4yr,
+      TRUE                     ~ NA_real_
+    ),
+    
+    # enrollment age — backtrack from graduation
+    age_enrolled_est = case_when(
+      max_education %in% 13:14 ~ age_graduated_2yr - 2,
+      max_education >= 15      ~ age_graduated_4yr - 4,
       TRUE                     ~ NA_real_
     )
   ) %>%
