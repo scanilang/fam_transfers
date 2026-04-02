@@ -37,6 +37,8 @@ college_enrollment <- psid_ind %>%
   group_by(ER30001, ER30002) %>%
   tidyr::fill(Completed_Education, .direction = "down" ) %>% 
   mutate(
+    Completed_Education = cummax(tidyr::replace_na(Completed_Education, 0)),
+    Completed_Education = if_else(Completed_Education == 0, NA_real_, Completed_Education),
     lag_edu = lag(Completed_Education),
     max_education = max(Completed_Education, na.rm = TRUE),
     max_education = if_else(is.infinite(max_education), NA_real_, max_education),
@@ -52,7 +54,7 @@ college_enrollment <- psid_ind %>%
     entered_college_btw_waves = !is.na(lag_edu) & lag_edu <= 12 & Completed_Education > 13, # 2 year jump bc biannual survey
     
     year_enrolled_start = case_when(
-      entered_college & !entered_college_last_year  ~ Year,
+      entered_college & !entered_college_btw_waves  ~ Year,
       (first_obs_already_enrolled | entered_college_btw_waves) ~ Year - (Completed_Education - 12),
       TRUE                       ~ NA_real_
     ),
@@ -85,7 +87,7 @@ college_enrollment <- psid_ind %>%
     .groups = "drop"
   ) %>%
   mutate(
-    across(c(enroll_start_year, grad_year_2yr, grad_year_4yr),
+    across(c(enroll_start_year, grad_year_2yr, grad_year_4yr, year_at_max_edu, age_at_max_edu),
            ~ if_else(is.infinite(.), NA_real_, .)),
     degree_type = case_when(
       max_education %in% 13:15 ~ "2yr",
@@ -99,8 +101,7 @@ college_enrollment <- psid_ind %>%
       TRUE ~ NA_real_
     )
   ) %>% 
-  select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved) %>% 
-  filter(!is.na(enroll_end_year))
+  select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved)
 
 #################################################################################################################################
 # Parent Income at Enrollment Date
@@ -242,6 +243,32 @@ psid_edu = psid_rt13_clean %>%
                    "enroll_start_year" = "Year")) %>% 
   mutate(log_nonasset_income = coalesce(log_nonasset_income, log_nonasset_income_alt),
          log_asset_income    = coalesce(log_asset_income, log_asset_income_alt),
-         log_educ_exp = log(Help_School_Amount + 1))
+         Race_Head           = coalesce(Race_Head, Race_Head_alt),
+         Marital_Status      = coalesce(Marital_Status, Marital_Status_alt),
+         Head_College        = coalesce(Head_College, Head_College_alt),
+         family_type         = coalesce(family_type, family_type_alt),
+         Family_Unit_Size    = coalesce(Family_Unit_Size, Family_Unit_Size_alt)) %>% 
+  mutate(
+    # expected degree length
+    degree_years = case_when(
+      degree_type == "2yr" ~ 2,
+      degree_type == "4yr" ~ 4,
+      TRUE                 ~ NA_real_ ),
+    
+    # years enrolled as of 2012 (RT13 reference year)
+    years_enrolled_so_far = pmax(2012 - enroll_start_year + 1, 1),
+    
+    # still enrolled at time of RT13
+    still_enrolled = enroll_end_year > 2012 | is.na(enroll_end_year),
+    
+    # projected total school transfer
+    Help_School_Amount_Adj = case_when(
+      # still enrolled: scale up partial amount
+      still_enrolled & years_enrolled_so_far < degree_years 
+      ~ Help_School_Amount / years_enrolled_so_far * degree_years,
+      # already graduated: amount is complete
+      TRUE ~ Help_School_Amount
+    ),
+    log_educ_exp = log(Help_School_Amount_Adj + 1))
 
 write.csv(psid_edu , "../data/psid_edu.csv")
