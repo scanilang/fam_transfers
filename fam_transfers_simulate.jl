@@ -160,3 +160,11 @@ function get_itp_function(model, j, savepath)
 
     return vj_itp, pfj_itp
 end
+
+function education_decision(model, R, t)
+    v_1 = vj_itp[R, 1, n, t, 1, shock_in, shock_out, past_in, past_out](a, z) # education choice 1
+    v_2 = vj_itp[R, 1, n, t, 2, shock_in, shock_out, past_in, past_out](a, z) # education choice 2
+    v_3 = vj_itp[R, 1, n, t, 3, shock_in, shock_out, past_in, past_out](a, z) # education choice 3
+    return argmax((v_1, v_2, v_3))
+    
+end

@@ -232,7 +232,8 @@ psid_rt13_clean <- psid_fam_roster %>%
 #################################################################################################################################
 
 psid_edu = psid_rt13_clean %>% 
-  left_join(college_enrollment, by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002")) %>% 
+  left_join(college_enrollment, by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002")) %>% 
+
   left_join(psid_income, by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002", "enroll_start_year" = "Year")) %>% 
   mutate(log_educ_exp = log(Help_School_Amount))
 
