@@ -33,9 +33,9 @@ college_enrollment <- psid_ind %>%
          Completed_Education = if_else(
            Completed_Education %in% c(98, 99, 0), NA_real_,
            as.numeric(Completed_Education))) %>%
-  tidyr::fill(Completed_Education, .direction = "down" ) %>% 
   arrange(ER30001, ER30002, Survey_Year) %>%
   group_by(ER30001, ER30002) %>%
+  tidyr::fill(Completed_Education, .direction = "down" ) %>% 
   mutate(
     lag_edu = lag(Completed_Education),
     max_education = max(Completed_Education, na.rm = TRUE),
@@ -49,11 +49,11 @@ college_enrollment <- psid_ind %>%
     # enrollment start
     first_obs_already_enrolled = is.na(lag_edu) & Completed_Education > 12,
     entered_college = !is.na(lag_edu) & lag_edu <= 12 & Completed_Education > 12,
-    entered_college_last_year = !is.na(lag_edu) & lag_edu <= 12 & Completed_Education > 13, # 2 year jump bc biannual survey
+    entered_college_btw_waves = !is.na(lag_edu) & lag_edu <= 12 & Completed_Education > 13, # 2 year jump bc biannual survey
     
     year_enrolled_start = case_when(
       entered_college & !entered_college_last_year  ~ Year,
-      (first_obs_already_enrolled | entered_college_last_year) ~ Year - (Completed_Education - 12),
+      (first_obs_already_enrolled | entered_college_btw_waves) ~ Year - (Completed_Education - 12),
       TRUE                       ~ NA_real_
     ),
     
@@ -233,8 +233,15 @@ psid_rt13_clean <- psid_fam_roster %>%
 
 psid_edu = psid_rt13_clean %>% 
   left_join(college_enrollment, by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002")) %>% 
-
   left_join(psid_income, by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002", "enroll_start_year" = "Year")) %>% 
-  mutate(log_educ_exp = log(Help_School_Amount))
+  # if no exact match, try enroll_start_year - 1
+  left_join(psid_income %>% mutate(Year = Year + 1) %>% 
+              rename_with(~ paste0(.x, "_alt"), -c(ER30001, ER30002, Year)),
+            by = c("Head_1968_ID" = "ER30001", 
+                   "Head_Person_Number" = "ER30002", 
+                   "enroll_start_year" = "Year")) %>% 
+  mutate(log_nonasset_income = coalesce(log_nonasset_income, log_nonasset_income_alt),
+         log_asset_income    = coalesce(log_asset_income, log_asset_income_alt),
+         log_educ_exp = log(Help_School_Amount + 1))
 
 write.csv(psid_edu , "../data/psid_edu.csv")
