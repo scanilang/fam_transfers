@@ -95,10 +95,10 @@ college_enrollment <- psid_ind %>%
       TRUE                     ~ NA_character_
     ),
     enroll_end_year = case_when(
-      enrollment_unobserved == 1 ~ NA_real_,
-      max_education >= 16 ~ grad_year_4yr,   # includes post-grad
-      max_education %in% 13:15 ~ grad_year_2yr,
-      TRUE ~ NA_real_
+      enrollment_unobserved ~ NA_real_,
+      degree_type == "4yr"  ~ grad_year_4yr,
+      degree_type == "2yr"  ~ grad_year_2yr,
+      TRUE                  ~ NA_real_
     )
   ) %>% 
   select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved)
@@ -159,7 +159,7 @@ psid_rt13_clean <- psid_fam_roster %>%
     Amt_Other_Financial_Since18 = RT13V132
   ) %>%
   # keep only child records (type 1), drop parent records (type 2)
-  filter(Record_Type == 1) %>% 
+  filter(Record_Type == 1, Child_1968_ID < 3000) %>% 
   mutate(
     # Clean education variable
     Child_Education = case_when(
@@ -255,20 +255,19 @@ psid_edu = psid_rt13_clean %>%
       degree_type == "4yr" ~ 4,
       TRUE                 ~ NA_real_ ),
     
-    # years enrolled as of 2012 (RT13 reference year)
-    years_enrolled_so_far = pmax(2012 - enroll_start_year + 1, 1),
-    
     # still enrolled at time of RT13
-    still_enrolled = enroll_end_year > 2012 | is.na(enroll_end_year),
+    years_enrolled_so_far = pmax(2012 - enroll_start_year + 1, 1),
+    still_enrolled = !enrollment_unobserved &
+      (enroll_end_year > 2012 |
+         (is.na(enroll_end_year) & !is.na(enroll_start_year) & enroll_start_year <= 2012)),
     
-    # projected total school transfer
-    Help_School_Amount_Adj = case_when(
-      # still enrolled: scale up partial amount
-      still_enrolled & years_enrolled_so_far < degree_years 
-      ~ Help_School_Amount / years_enrolled_so_far * degree_years,
-      # already graduated: amount is complete
-      TRUE ~ Help_School_Amount
-    ),
+    # tuition help
+    scale_factor = case_when(
+      still_enrolled & years_enrolled_so_far < degree_years
+      ~ pmin(degree_years / years_enrolled_so_far, 4),
+      TRUE ~ 1),
+    Help_School_Amount_Adj = Help_School_Amount * scale_factor,
+
     log_educ_exp = log(Help_School_Amount_Adj + 1))
 
 write.csv(psid_edu , "../data/psid_edu.csv")
