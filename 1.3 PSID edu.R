@@ -255,6 +255,7 @@ parent_income_at_decision <- psid_rt13_with_enrollment %>%
 psid_edu <- psid_rt13_with_enrollment %>%
   left_join(parent_income_at_decision,
             by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>% 
+  left_join(cpi_data) %>% 
   mutate(
     # expected degree length
     degree_years = case_when(
@@ -273,7 +274,8 @@ psid_edu <- psid_rt13_with_enrollment %>%
       still_enrolled & years_enrolled_so_far < degree_years
       ~ pmin(degree_years / years_enrolled_so_far, 4),
       TRUE ~ 1),
-    Help_School_Amount_Adj = Help_School_Amount * scale_factor,
+    Help_School_Amount_Real = Help_School_Amount * ratio_2010,
+    Help_School_Amount_Adj = Help_School_Amount_Real * scale_factor,
 
     log_educ_exp = log(Help_School_Amount_Adj + 1))
 
