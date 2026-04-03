@@ -83,13 +83,15 @@ college_enrollment <- psid_ind %>%
     grad_year_2yr          = min(year_at_2yr, na.rm = TRUE),
     grad_year_4yr          = min(year_at_4yr, na.rm = TRUE),
     enrollment_imputed     = any(first_obs_already_enrolled, na.rm = TRUE),
-    enrollment_unobserved = enrollment_imputed & (first_obs_year == year_at_max_edu),
-    .groups = "drop"
+    enrollment_unobserved = enrollment_imputed & !is.na(year_at_max_edu) & (first_obs_year == year_at_max_edu),
+   
+     .groups = "drop"
   ) %>%
   mutate(
     across(c(enroll_start_year, grad_year_2yr, grad_year_4yr, year_at_max_edu, age_at_max_edu),
            ~ if_else(is.infinite(.), NA_real_, .)),
     degree_type = case_when(
+      edu_still_rising & max_education %in% 13:15 ~ NA_character_,  # might still be in school
       max_education %in% 13:15 ~ "2yr",
       max_education >= 16      ~ "4yr",
       TRUE                     ~ NA_character_
@@ -232,22 +234,27 @@ psid_rt13_clean <- psid_fam_roster %>%
 # Merge and Export
 #################################################################################################################################
 
-psid_edu = psid_rt13_clean %>% 
-  left_join(college_enrollment, by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002")) %>% 
-  left_join(psid_income, by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002", "enroll_start_year" = "Year")) %>% 
-  # if no exact match, try enroll_start_year - 1
-  left_join(psid_income %>% mutate(Year = Year + 1) %>% 
-              rename_with(~ paste0(.x, "_alt"), -c(ER30001, ER30002, Year)),
-            by = c("Head_1968_ID" = "ER30001", 
-                   "Head_Person_Number" = "ER30002", 
-                   "enroll_start_year" = "Year")) %>% 
-  mutate(log_nonasset_income = coalesce(log_nonasset_income, log_nonasset_income_alt),
-         log_asset_income    = coalesce(log_asset_income, log_asset_income_alt),
-         Race_Head           = coalesce(Race_Head, Race_Head_alt),
-         Marital_Status      = coalesce(Marital_Status, Marital_Status_alt),
-         Head_College        = coalesce(Head_College, Head_College_alt),
-         family_type         = coalesce(family_type, family_type_alt),
-         Family_Unit_Size    = coalesce(Family_Unit_Size, Family_Unit_Size_alt)) %>% 
+# Step 1: merge enrollment timing on child
+psid_rt13_with_enrollment <- psid_rt13_clean %>%
+  left_join(college_enrollment, 
+            by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002"))
+
+# Step 2: find closest PSID wave to enrollment start for parent
+parent_income_at_decision <- psid_rt13_with_enrollment %>%
+  filter(!is.na(enroll_start_year)) %>%
+  select(Head_1968_ID, Head_Person_Number, Child_Person_Number, enroll_start_year) %>%
+  inner_join(psid_income,
+             by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002"),
+             relationship = "many-to-many") %>%
+  mutate(year_gap = abs(Year - enroll_start_year)) %>%
+  group_by(Head_1968_ID, Head_Person_Number, Child_Person_Number) %>%
+  slice_min(year_gap, n = 1, with_ties = FALSE) %>%
+  ungroup()
+
+# Step 3: merge back
+psid_edu <- psid_rt13_with_enrollment %>%
+  left_join(parent_income_at_decision,
+            by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>% 
   mutate(
     # expected degree length
     degree_years = case_when(
