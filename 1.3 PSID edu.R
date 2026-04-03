@@ -103,7 +103,7 @@ college_enrollment <- psid_ind %>%
       TRUE                  ~ NA_real_
     )
   ) %>% 
-  select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved)
+  select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved, edu_still_rising)
 
 #################################################################################################################################
 # Parent Income at Enrollment Date
