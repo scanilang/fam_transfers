@@ -106,20 +106,6 @@ college_enrollment <- psid_ind %>%
   select(ER30001, ER30002, enroll_start_year, enroll_end_year, degree_type, age_at_max_edu, enrollment_imputed, enrollment_unobserved, edu_still_rising)
 
 #################################################################################################################################
-# Parent Income at Enrollment Date
-#################################################################################################################################
-psid_income <- psid_clean %>%
-  select(
-    ER30001, ER30002, Family_ID, Survey_Year,Year,
-    Race_Head, Age_Head, Marital_Status,
-    Head_College, Family_Unit_Size,
-    log_nonasset_income, log_asset_income,
-    Total_NonAsset_Income, Total_Asset_Income,
-    family_type,
-    Father_Education_Head, Mother_Education_Head
-  )
-
-#################################################################################################################################
 # PSID Family Roster and Transfers
 #################################################################################################################################
 
@@ -240,25 +226,44 @@ psid_rt13_with_enrollment <- psid_rt13_clean %>%
             by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002"))
 
 # Step 2: find closest PSID wave to enrollment start for parent
+child_hh_at_enrollment <- psid_ind %>%
+  select(ER30001, ER30002, Family_ID, Survey_Year) %>%
+  mutate(Year = Survey_Year - 1)
+
 parent_income_at_decision <- psid_rt13_with_enrollment %>%
   filter(!is.na(enroll_start_year)) %>%
-  select(Head_1968_ID, Head_Person_Number, Child_Person_Number, enroll_start_year) %>%
-  inner_join(psid_income,
-             by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002"),
+  select(Child_1968_ID, Child_Person_Number, 
+         Head_1968_ID, Head_Person_Number, enroll_start_year) %>%
+  # find the child's Family_ID nearest to enrollment start
+  inner_join(child_hh_at_enrollment,
+             by = c("Child_1968_ID" = "ER30001",
+                    "Child_Person_Number" = "ER30002"),
              relationship = "many-to-many") %>%
   mutate(year_gap = abs(Year - enroll_start_year)) %>%
-  group_by(Head_1968_ID, Head_Person_Number, Child_Person_Number) %>%
+  group_by(Child_1968_ID, Child_Person_Number) %>%
   slice_min(year_gap, n = 1, with_ties = FALSE) %>%
-  ungroup()
+  ungroup() %>%
+  # pull that household head's characteristics
+  inner_join(psid_clean %>% 
+               select(Family_ID, Survey_Year, Year,
+                      Race_Head, Age_Head, Marital_Status,
+                      Head_College, Family_Unit_Size,
+                      log_nonasset_income, log_asset_income,
+                      Total_NonAsset_Income, Total_Asset_Income,
+                      family_type, Father_Education_Head, Mother_Education_Head),
+             by = c("Family_ID", "Year"))
+
 
 # Step 3: merge back
 psid_edu <- psid_rt13_with_enrollment %>%
-  left_join(parent_income_at_decision,
-            by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>% 
+  left_join(parent_income_at_decision %>%
+              select(-Family_ID, -Survey_Year, -Year, -year_gap),
+            by = c("Child_1968_ID", "Child_Person_Number",
+                   "Head_1968_ID", "Head_Person_Number")) %>% 
   mutate(
     enroll_midpoint = round((enroll_start_year + coalesce(enroll_end_year, 2012)) / 2)
   ) %>% 
-  left_join(cpi_data, by = ("enroll_midpoint" = "Year")) %>% 
+  left_join(cpi_data %>%  select(year, ratio_2010), by = c("enroll_midpoint" = "Year")) %>% 
   mutate(
     # expected degree length
     degree_years = case_when(
@@ -268,16 +273,18 @@ psid_edu <- psid_rt13_with_enrollment %>%
     
     # still enrolled at time of RT13
     years_enrolled_so_far = pmax(2012 - enroll_start_year + 1, 1),
-    still_enrolled = !enrollment_unobserved &
-      (enroll_end_year > 2012 |
-         (is.na(enroll_end_year) & !is.na(enroll_start_year) & enroll_start_year <= 2012)),
+    still_enrolled = replace_na(
+      !enrollment_unobserved &
+        (enroll_end_year > 2012 |
+           (is.na(enroll_end_year) & !is.na(enroll_start_year) & enroll_start_year <= 2012)),
+      FALSE),
     
     # tuition help
     scale_factor = case_when(
       still_enrolled & years_enrolled_so_far < degree_years
       ~ pmin(degree_years / years_enrolled_so_far, 4),
       TRUE ~ 1),
-    Help_School_Amount_Real = Help_School_Amount * ratio_2010,
+    Help_School_Amount_Real = Help_School_Amount * coalesce(ratio_2010, 1),
     Help_School_Amount_Adj = Help_School_Amount_Real * scale_factor,
 
     log_educ_exp = log(Help_School_Amount_Adj + 1))
