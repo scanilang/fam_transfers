@@ -255,7 +255,10 @@ parent_income_at_decision <- psid_rt13_with_enrollment %>%
 psid_edu <- psid_rt13_with_enrollment %>%
   left_join(parent_income_at_decision,
             by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>% 
-  left_join(cpi_data) %>% 
+  mutate(
+    enroll_midpoint = round((enroll_start_year + coalesce(enroll_end_year, 2012)) / 2)
+  ) %>% 
+  left_join(cpi_data, by = ("enroll_midpoint" = "Year")) %>% 
   mutate(
     # expected degree length
     degree_years = case_when(
