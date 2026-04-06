@@ -51,17 +51,24 @@ summary(black_probit_edu)
 
 white_transfer_edu <- lm(log_educ_exp ~ log_nonasset_income + log_asset_income +
                            Family_Unit_Size + Head_College + Marital_Status + family_type +
-                           degree_type +Year_bins,
-  data    = psid_educ %>% filter(Race_Head == "White"))
+                           degree_type +enroll_era, 
+                         data    = psid_edu %>% filter(Race_Head == "White", Help_School_Indicator ==1 ))
 summary(white_transfer_edu)
 
 black_transfer_edu <- lm(log_educ_exp ~ log_nonasset_income + log_asset_income +
                            Family_Unit_Size + Head_College + Marital_Status + family_type +
-                           degree_type + Year_bins,
-                         data    = psid_educ %>% filter(Race_Head == "Black"))
+                           degree_type + enroll_era,
+                         data    = psid_edu %>% filter(Race_Head == "Black", Help_School_Indicator ==1 ))
 summary(black_transfer_edu)
 
-
+pooled_transfer_edu <- lm(
+  log_educ_exp ~ log_nonasset_income + log_asset_income +
+    Head_College + degree_type + enroll_era +
+    Race_Head + Race_Head:log_nonasset_income,
+  data = psid_edu %>% filter(Help_School_Indicator == 1,
+                             degree_type %in% c("2yr", "4yr"),
+                             Race_Head %in% c("White", "Black")))
+summary(pooled_transfer_edu)
 
 #################################################################################################################################
 # Export Results

@@ -245,7 +245,7 @@ parent_income_at_decision <- psid_rt13_with_enrollment %>%
   ungroup() %>%
   # pull that household head's characteristics
   inner_join(psid_clean %>% 
-               select(Family_ID, Survey_Year, Year,
+               select(Family_ID, Year,
                       Race_Head, Age_Head, Marital_Status,
                       Head_College, Family_Unit_Size,
                       log_nonasset_income, log_asset_income,
@@ -257,13 +257,13 @@ parent_income_at_decision <- psid_rt13_with_enrollment %>%
 # Step 3: merge back
 psid_edu <- psid_rt13_with_enrollment %>%
   left_join(parent_income_at_decision %>%
-              select(-Family_ID, -Survey_Year, -Year, -year_gap),
+              select(-Family_ID, -Year, -year_gap,  -enroll_start_year),
             by = c("Child_1968_ID", "Child_Person_Number",
                    "Head_1968_ID", "Head_Person_Number")) %>% 
   mutate(
     enroll_midpoint = round((enroll_start_year + coalesce(enroll_end_year, 2012)) / 2)
   ) %>% 
-  left_join(cpi_data %>%  select(year, ratio_2010), by = c("enroll_midpoint" = "Year")) %>% 
+  left_join(cpi_data %>%  select(year, ratio_2010), by = c("enroll_midpoint" = "year")) %>% 
   mutate(
     # expected degree length
     degree_years = case_when(
@@ -287,6 +287,15 @@ psid_edu <- psid_rt13_with_enrollment %>%
     Help_School_Amount_Real = Help_School_Amount * coalesce(ratio_2010, 1),
     Help_School_Amount_Adj = Help_School_Amount_Real * scale_factor,
 
-    log_educ_exp = log(Help_School_Amount_Adj + 1))
+    log_educ_exp = log(Help_School_Amount_Adj + 1),
+    
+    # year bins 
+    enroll_era = case_when(
+      enroll_start_year <= 1992          ~ "pre-1993",     # low tuition era
+      enroll_start_year %in% 1993:2001   ~ "1993-2001",    # tuition starts rising, pre-9/11
+      enroll_start_year %in% 2002:2008   ~ "2002-2008",    # rapid tuition inflation, housing boom
+      enroll_start_year %in% 2009:2012   ~ "2009-2012",    # post-crisis, state funding cuts
+      TRUE                               ~ NA_character_
+    ))
 
 write.csv(psid_edu , "../data/psid_edu.csv")
