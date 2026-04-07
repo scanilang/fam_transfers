@@ -31,17 +31,25 @@ psid_edu = read.csv('../data/psid_edu.csv')
 
 # using family roster and transfers
 # problem : i dont know part or full time
-white_probit_edu = glm(Help_School_Indicator ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type  ,
-                       family = binomial(link = "probit"), 
-                       data = psid_edu %>% filter(Race_Head == "White"))
-summary(white_probit_edu)
+# white_probit_edu = glm(Help_School_Indicator ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+#                          Marital_Status + family_type  ,
+#                        family = binomial(link = "probit"), 
+#                        data = psid_edu %>% filter(Race_Head == "White", degree_type_final %in% c("2yr", "4yr")))
+# summary(white_probit_edu)
+# 
+# black_probit_edu = glm(Help_School_Indicator ~ log_nonasset_income + log_asset_income  +  Family_Unit_Size + Head_College +
+#                          Marital_Status   ,
+#                        family = binomial(link = "probit"), 
+#                        data = psid_edu %>% filter(Race_Head == "Black", degree_type_final %in% c("2yr", "4yr")))
+# summary(black_probit_edu)
 
-black_probit_edu = glm(Help_School_Indicator ~ log_nonasset_income + log_asset_income  + Head_College  ,
-                       family = binomial(link = "probit"), 
-                       data = psid_edu %>% filter(Race_Head == "Black"))
-summary(black_probit_edu)
-
+pooled_probit_edu = glm(Help_School_Indicator ~ log_nonasset_income + log_asset_income + degree_type_final+
+                          Family_Unit_Size + Head_College + Marital_Status + family_type +
+                          Race_Head + enroll_era,
+                        family = binomial(link = "probit"), 
+                        data = psid_edu %>% filter(Race_Head %in% c("White", "Black"),
+                                                   degree_type_final %in% c("2yr", "4yr")))
+summary(pooled_probit_edu)
 
 
 #################################################################################################################################
@@ -62,10 +70,10 @@ summary(black_probit_edu)
 
 pooled_transfer_edu <- lm(
   log_educ_exp ~ log_nonasset_income + log_asset_income +
-    Head_College + degree_type + enroll_era +
+    Head_College + degree_type_final + enroll_era +
     Race_Head,
   data = psid_edu %>% filter(Help_School_Indicator == 1,
-                             degree_type %in% c("2yr", "4yr"),
+                             degree_type_final %in% c("2yr", "4yr"),
                              Race_Head %in% c("White", "Black")))
 summary(pooled_transfer_edu)
 
@@ -73,10 +81,11 @@ summary(pooled_transfer_edu)
 # Export Results
 #################################################################################################################################
 
+# 
+# edu_transfer_probit_results = data.frame(white_probit_edu = white_probit_edu$coefficients,
+#                                      black_probit_edu = black_probit_edu$coefficients)
 
-edu_transfer_probit_results = data.frame(white_probit_edu = white_probit_edu$coefficients,
-                                     black_probit_edu = black_probit_edu$coefficients)
-
+edu_transfer_probit_results = data.frame(pooled_probit_edu = pooled_probit_edu$coefficients)
 edu_transfer_amount_results = data.frame(pooled_transfer_edu = pooled_transfer_edu$coefficients)
 
 write.csv(edu_transfer_probit_results, "../data/edu_transfer_probit_results.csv")
