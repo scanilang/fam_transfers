@@ -152,10 +152,10 @@ function get_itp_function(model, j, savepath)
     Vj = data.Vj;
     PFj = data.PFj;
 
-    vj_itp = [LinearInterpolation((a_grid, z_grid[R]), Vj[R, m, n, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+    vj_itp = [LinearInterpolation((a_grid, z_grid[R]), Vj[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2];
 
-    pfj_itp = [LinearInterpolation((a_grid, z_grid[R]), PFj[R, m, n, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+    pfj_itp = [LinearInterpolation((a_grid, z_grid[R]), PFj[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2];
 
     return vj_itp, pfj_itp

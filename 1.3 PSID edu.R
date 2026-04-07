@@ -215,7 +215,6 @@ psid_rt13_clean <- psid_fam_roster %>%
     # Child living arrangement
     child_coresident = as.integer(Child_In_FU == 1)
   ) 
-
 #################################################################################################################################
 # Merge and Export
 #################################################################################################################################
@@ -225,16 +224,16 @@ psid_rt13_with_enrollment <- psid_rt13_clean %>%
   left_join(college_enrollment, 
             by = c("Child_1968_ID" = "ER30001", "Child_Person_Number" = "ER30002"))
 
-# Step 2: find closest PSID wave to enrollment start for parent
+# Step 2: find child's household at enrollment, pull head's characteristics
 child_hh_at_enrollment <- psid_ind %>%
   select(ER30001, ER30002, Family_ID, Survey_Year) %>%
-  mutate(Year = Survey_Year - 1)
+  mutate(Year = Survey_Year - 1) %>%
+  select(-Survey_Year)
 
 parent_income_at_decision <- psid_rt13_with_enrollment %>%
   filter(!is.na(enroll_start_year)) %>%
   select(Child_1968_ID, Child_Person_Number, 
          Head_1968_ID, Head_Person_Number, enroll_start_year) %>%
-  # find the child's Family_ID nearest to enrollment start
   inner_join(child_hh_at_enrollment,
              by = c("Child_1968_ID" = "ER30001",
                     "Child_Person_Number" = "ER30002"),
@@ -243,59 +242,143 @@ parent_income_at_decision <- psid_rt13_with_enrollment %>%
   group_by(Child_1968_ID, Child_Person_Number) %>%
   slice_min(year_gap, n = 1, with_ties = FALSE) %>%
   ungroup() %>%
-  # pull that household head's characteristics
   inner_join(psid_clean %>% 
                select(Family_ID, Year,
                       Race_Head, Age_Head, Marital_Status,
                       Head_College, Family_Unit_Size,
                       log_nonasset_income, log_asset_income,
-                      Total_NonAsset_Income, Total_Asset_Income,
-                      family_type, Father_Education_Head, Mother_Education_Head),
+                      family_type),
              by = c("Family_ID", "Year"))
 
-
-# Step 3: merge back
+# Step 3: initial merge (no CPI/scaling yet — do that after all fallbacks)
 psid_edu <- psid_rt13_with_enrollment %>%
   left_join(parent_income_at_decision %>%
-              select(-Family_ID, -Year, -year_gap,  -enroll_start_year),
+              select(-Family_ID, -Year, -year_gap, -enroll_start_year),
             by = c("Child_1968_ID", "Child_Person_Number",
-                   "Head_1968_ID", "Head_Person_Number")) %>% 
+                   "Head_1968_ID", "Head_Person_Number"))
+
+# Step 4a: fallback for children with enrollment dates but no HH income match
+#          (child's enrollment-era household head not found in psid_clean)
+#          → use 2013 parent's closest year as head to enrollment
+parent_income_fallback <- psid_edu %>%
+  filter(!is.na(enroll_start_year), is.na(log_nonasset_income)) %>%
+  select(Head_1968_ID, Head_Person_Number, Child_Person_Number, enroll_start_year) %>%
+  inner_join(psid_clean %>%
+               select(ER30001, ER30002, Year,
+                      log_nonasset_income_fb = log_nonasset_income,
+                      log_asset_income_fb = log_asset_income,
+                      Race_Head_fb = Race_Head,
+                      Head_College_fb = Head_College,
+                      family_type_fb = family_type,
+                      Marital_Status_fb = Marital_Status,
+                      Family_Unit_Size_fb = Family_Unit_Size),
+             by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002"),
+             relationship = "many-to-many") %>%
+  mutate(year_gap = abs(Year - enroll_start_year)) %>%
+  group_by(Head_1968_ID, Head_Person_Number, Child_Person_Number) %>%
+  slice_min(year_gap, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(-Year, -year_gap, -enroll_start_year)
+
+# Step 4b: fallback for children never in psid_ind (no enrollment dates at all)
+#          → estimate enrollment from RT13 age, use parent's closest year
+parent_income_fallback_noind <- psid_edu %>%
+  filter(is.na(enroll_start_year), !is.na(Child_Age)) %>%
+  mutate(est_enroll_year = 2013 - Child_Age + 18) %>%
+  select(Head_1968_ID, Head_Person_Number, Child_Person_Number, est_enroll_year) %>%
+  inner_join(psid_clean %>%
+               select(ER30001, ER30002, Year,
+                      log_nonasset_income_fb2 = log_nonasset_income,
+                      log_asset_income_fb2 = log_asset_income,
+                      Race_Head_fb2 = Race_Head,
+                      Head_College_fb2 = Head_College,
+                      family_type_fb2 = family_type,
+                      Marital_Status_fb2 = Marital_Status,
+                      Family_Unit_Size_fb2 = Family_Unit_Size),
+             by = c("Head_1968_ID" = "ER30001", "Head_Person_Number" = "ER30002"),
+             relationship = "many-to-many") %>%
+  mutate(year_gap = abs(Year - est_enroll_year)) %>%
+  group_by(Head_1968_ID, Head_Person_Number, Child_Person_Number) %>%
+  slice_min(year_gap, n = 1, with_ties = FALSE) %>%
+  ungroup() %>%
+  select(-Year, -year_gap, -est_enroll_year)
+
+# Step 4c: join both fallbacks
+psid_edu <- psid_edu %>%
+  left_join(parent_income_fallback,
+            by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>%
+  left_join(parent_income_fallback_noind,
+            by = c("Head_1968_ID", "Head_Person_Number", "Child_Person_Number")) %>%
   mutate(
-    enroll_midpoint = round((enroll_start_year + coalesce(enroll_end_year, 2012)) / 2)
-  ) %>% 
-  left_join(cpi_data %>%  select(year, ratio_2010), by = c("enroll_midpoint" = "year")) %>% 
+    # track which income source was used
+    income_source = case_when(
+      !is.na(log_nonasset_income)     ~ "enrollment_hh",
+      !is.na(log_nonasset_income_fb)  ~ "parent_closest_to_enroll",
+      !is.na(log_nonasset_income_fb2) ~ "parent_closest_to_age18",
+      TRUE                            ~ "missing"
+    ),
+    # coalesce: best available wins
+    log_nonasset_income = coalesce(log_nonasset_income, log_nonasset_income_fb, log_nonasset_income_fb2),
+    log_asset_income    = coalesce(log_asset_income, log_asset_income_fb, log_asset_income_fb2),
+    Race_Head           = coalesce(Race_Head, Race_Head_fb, Race_Head_fb2),
+    Head_College        = coalesce(Head_College, Head_College_fb, Head_College_fb2),
+    family_type         = coalesce(family_type, family_type_fb, family_type_fb2),
+    Marital_Status      = coalesce(Marital_Status, Marital_Status_fb, Marital_Status_fb2),
+    Family_Unit_Size    = coalesce(Family_Unit_Size, Family_Unit_Size_fb, Family_Unit_Size_fb2)
+  )
+
+# Step 5: compute final variables using best available data
+psid_edu <- psid_edu %>%
   mutate(
-    # expected degree length
-    degree_years = case_when(
-      degree_type == "2yr" ~ 2,
-      degree_type == "4yr" ~ 4,
-      TRUE                 ~ NA_real_ ),
+    # degree type: individual file preferred, RT13 as fallback
+    degree_type_final = coalesce(degree_type,
+                                 if_else(degree_type_rt %in% c("2yr", "4yr"),
+                                         degree_type_rt, NA_character_)),
     
-    # still enrolled at time of RT13
-    years_enrolled_so_far = pmax(2012 - enroll_start_year + 1, 1),
+    # best enrollment start: observed or estimated from age
+    est_enroll_start  = if_else(is.na(enroll_start_year) & !is.na(Child_Age),
+                                2013 - Child_Age + 18, NA_real_),
+    enroll_start_best = coalesce(enroll_start_year, est_enroll_start),
+    
+    # CPI: midpoint of enrollment window
+    enroll_midpoint = round((enroll_start_best + coalesce(enroll_end_year, 2012)) / 2)
+  ) %>%
+  left_join(cpi_data %>% select(year, ratio_2010), 
+            by = c("enroll_midpoint" = "year")) %>%
+  mutate(
+    # degree length for scaling
+    degree_years = case_when(
+      degree_type_final == "2yr" ~ 2,
+      degree_type_final == "4yr" ~ 4,
+      TRUE                       ~ NA_real_),
+    
+    # still enrolled at time of RT13 (2012 reference year)
+    years_enrolled_so_far = pmax(2012 - enroll_start_best + 1, 1),
     still_enrolled = replace_na(
-      !enrollment_unobserved &
+      !coalesce(enrollment_unobserved, FALSE) &
         (enroll_end_year > 2012 |
-           (is.na(enroll_end_year) & !is.na(enroll_start_year) & enroll_start_year <= 2012)),
+           (is.na(enroll_end_year) & !is.na(enroll_start_best) & enroll_start_best <= 2012)),
       FALSE),
     
-    # tuition help
+    # scale partial spells to projected total
     scale_factor = case_when(
       still_enrolled & years_enrolled_so_far < degree_years
       ~ pmin(degree_years / years_enrolled_so_far, 4),
       TRUE ~ 1),
+    
+    # final adjusted amount
     Help_School_Amount_Real = Help_School_Amount * coalesce(ratio_2010, 1),
-    Help_School_Amount_Adj = Help_School_Amount_Real * scale_factor,
-
+    Help_School_Amount_Adj  = Help_School_Amount_Real * scale_factor,
     log_educ_exp = log(Help_School_Amount_Adj + 1),
     
-    # year bins 
+    # enrollment era
     enroll_era = case_when(
-      enroll_start_year <= 1992          ~ "pre-1993",     # low tuition era
-      enroll_start_year %in% 1993:2001   ~ "1993-2001",    # tuition starts rising, pre-9/11
-      enroll_start_year %in% 2002:2008   ~ "2002-2008",    # rapid tuition inflation, housing boom
-      enroll_start_year %in% 2009:2012   ~ "2009-2012",    # post-crisis, state funding cuts
-      TRUE                               ~ NA_character_
-    ))
+      enroll_start_best <= 2001        ~ "pre-2002",
+      enroll_start_best %in% 2002:2008 ~ "2002-2008",
+      enroll_start_best >= 2009        ~ "2009-2012",
+      TRUE                             ~ NA_character_
+    )
+  )
 
-write.csv(psid_edu , "../data/psid_edu.csv")
+write.csv(psid_edu, "../data/psid_edu.csv")
+
