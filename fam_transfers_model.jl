@@ -65,6 +65,7 @@ function model_create(;
 
     # precompute resources after shocks and probability of shocks
     shock_resources = zeros(Float64, working_years, 2, 2, 6, 4, 3,  apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
+    net_transfers = zeros(Float64, working_years, 2, 2, 6, 4, 3,  apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
     prob_shocks = zeros(Float64, working_years, 2, 2, 4, 6, 3, apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n,t,  e, i_a, i_z, shock_in, shock_out, past_in, past_out)
 
     for j in 1:working_years, R in Race, m in marital_status, n in fam_size, e in ed_type, t in fam_type
@@ -112,6 +113,7 @@ function model_create(;
 
                     
                     shock_resources[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = y - y_tax + shock_in_amount + shock_out_amount + a_next
+                    net_transfers[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = shock_in_amount + shock_out_amount
                     prob_shocks[j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = shock_in_prob * shock_out_prob
                 end
             end
@@ -119,5 +121,5 @@ function model_create(;
     end     
 
 
-    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, shock_resources, prob_shocks)
+    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, shock_resources, net_transfers, prob_shocks)
 end
