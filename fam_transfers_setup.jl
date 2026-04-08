@@ -1,3 +1,5 @@
+using DataFrames
+
 ###############################################################################################
 # Working
 ###############################################################################################
@@ -65,9 +67,9 @@ function tax_y(y, m)
 end
 
 ###############################################################################################
-# Transfer Functions
+# Get Regression Coefficients
 ###############################################################################################
-using DataFrames
+
 if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_probit_results.csv", DataFrame)
     transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/transfer_amount_results.csv", DataFrame)
@@ -79,6 +81,76 @@ else
     edu_transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_probit_results.csv", DataFrame)
     edu_transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_amount_results.csv", DataFrame)
 end
+
+###############################################################################################
+# Education Transfer Functions
+###############################################################################################
+
+β_edu_probit = Tuple(edu_transfer_probit.pooled_probit_edu)
+β_edu_amount = Tuple(edu_transfer_amount.pooled_transfer_edu)
+
+function edu_transfer_prob(r, n, m, j, y, a_income, e, t, degree_choice)
+    race_white = r == 1 ? 1 : 0
+    is_4yr     = degree_choice == 2 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0   # No College
+    e_1 = e == 1 ? 1 : 0   # Some College
+    m_single = m == 0 ? 1 : 0
+    f_1 = t == 1 ? 1 : 0   # both_low
+    f_2 = t == 2 ? 1 : 0   # both_mid
+    f_3 = t == 3 ? 1 : 0   # mixed
+
+    val = β_edu_probit[1] +                    # intercept
+          β_edu_probit[2] * log(y + 1) +        # log_nonasset_income
+          β_edu_probit[3] * log(a_income + 1) + # log_asset_income
+          β_edu_probit[4] * is_4yr +            # degree_type_final4yr
+          β_edu_probit[5] * n +                 # Family_Unit_Size
+          β_edu_probit[6] * e_0 +               # Head_CollegeNo College
+          β_edu_probit[7] * e_1 +               # Head_CollegeSome College
+          β_edu_probit[8] * m_single +           # Marital_StatusSingle
+          β_edu_probit[9] * f_1 +               # family_typeboth_low
+          β_edu_probit[10] * f_2 +              # family_typeboth_mid
+          β_edu_probit[11] * f_3 +              # family_typemixed
+          β_edu_probit[12] * race_white          # Race_HeadWhite
+          # [13] and [14] enroll_era — omitted, set to reference category
+
+    return cdf(Normal(), val)
+end
+
+# OLS: E(log amount | parents help, attending college)
+# Coefficient order from R:
+# [1] (Intercept)              [2] log_nonasset_income     [3] log_asset_income
+# [4] Head_CollegeNo College   [5] Head_CollegeSome College [6] degree_type_final4yr
+# [7] enroll_era2009-2012      [8] enroll_erapre-2002       [9] Race_HeadWhite
+
+function edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
+    race_white = r == 1 ? 1 : 0
+    is_4yr     = degree_choice == 2 ? 1 : 0
+    e_0 = e == 0 ? 1 : 0   # No College
+    e_1 = e == 1 ? 1 : 0   # Some College
+
+    val = β_edu_amount[1] +                    # intercept
+          β_edu_amount[2] * log(y + 1) +        # log_nonasset_income
+          β_edu_amount[3] * log(a_income + 1) + # log_asset_income
+          β_edu_amount[4] * e_0 +               # Head_CollegeNo College
+          β_edu_amount[5] * e_1 +               # Head_CollegeSome College
+          β_edu_amount[6] * is_4yr +            # degree_type_final4yr
+          β_edu_amount[7] * race_white           # Race_HeadWhite
+          # [7] and [8] enroll_era — omitted, set to reference category
+          # NOTE: shift indices if you keep enroll_era in export
+
+    return exp(val)
+end
+
+# Expected education transfer: P(help) × E(amount | help)
+function expected_edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
+    prob   = edu_transfer_prob(r, n, m, j, y, a_income, e, t, degree_choice)
+    amount = edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
+    return prob * amount
+end
+
+###############################################################################################
+# Intervivos Transfer Functions
+###############################################################################################
 
 β_white_probit_in   = Tuple(transfer_probit.white_probit_in)
 β_black_probit_in   = Tuple(transfer_probit.black_probit_in)
@@ -93,37 +165,6 @@ end
 β_black_edu_probit_in   = Tuple(edu_transfer_probit.black_edu_probit_in)
 β_white_edu_transfer_in  = Tuple(edu_transfer_amount.white_edu_transfer_in)
 β_black_edu_transfer_in = Tuple(edu_transfer_amount.black_edu_transfer_in)
-
-##################### Transfer education 
-function edu_transfer_prob( r, n, m, j, y, a_income, e, t, past_in, past_out)
-    age = j + 17
-    e_1 = e == 1 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0
-    f_2 = t == 2 ? 1 : 0
-    f_3 = t == 3 ? 1 : 0
-
-    if r == 2 
-        val = β_black_edu_probit_in[1] + β_black_edu_probit_in[2]*log(y) + β_black_edu_probit_in[3]*log(a_income) + β_black_edu_probit_in[4]*age +  
-        β_black_edu_probit_in[5]*age^2 + β_black_edu_probit_in[6]*n + β_black_edu_probit_in[7]*e_0 + β_black_edu_probit_in[8]*e_1 + β_black_edu_probit_in[9]*m
-        β_black_edu_probit_in[10]*f_1 + β_black_edu_probit_in[11]*f_2 + β_black_edu_probit_in[12]*f_3 + β_black_edu_probit_in[13]*past_in + β_black_edu_probit_in[14]*past_out + β_white_edu_probit_in[20]
-    else
-        val = β_white_edu_probit_in[1] + β_white_edu_probit_in[2]*log(y) + β_white_edu_probit_in[3]*log(a_income) + β_white_edu_probit_in[4]*age + 
-        β_white_edu_probit_in[5]*age^2 + β_white_edu_probit_in[6]*n + β_white_edu_probit_in[7]*e_0 + β_white_edu_probit_in[8]*e_1 + β_white_edu_probit_in[9]*m
-        β_white_edu_probit_in[10]*f_1 + β_white_edu_probit_in[11]*f_2 + β_white_edu_probit_in[12]*f_3 + β_white_edu_probit_in[13]*past_in + β_white_edu_probit_in[14]*past_out + β_white_edu_probit_in[20]
-    end    
-
-end
-
-function edu_transfer_in(β_white_edu_transfer_in, β_black_edu_transfer_in, r, n, m, j, y, a_income, e, t)
-
-    if r == 2
-
-    else
-    
-    end
-end
-
 ##################### Transfer out
 function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
@@ -234,3 +275,37 @@ survival_risk_full[181:200, 3] .= survival_risk[3, 2]
 survival_risk_full[121:200, 2:3] = 1 .- survival_risk_full[121:200, 2:3]
 
 survival_risk_full = survival_risk_full[:, 2:3]
+
+
+###############################################################################################
+# Natural Borrowing Limit
+###############################################################################################
+
+function compute_natural_borrowing_limit(model, R, e, m, degree_choice)
+    (; z_grid, r_loan, gamma, jpnts) = model
+    
+    z_min = z_grid[R][1]  # worst productivity realization
+    c_floor = 0.001       # minimum consumption (numerical floor)
+    
+    # Graduation age (j index, where j=1 is age 18)
+    j_grad = degree_choice == 1 ? 3 : 5  # 2yr: graduate at j=3 (age 20), 4yr: j=5 (age 22)
+    
+    # Work backward from last working period
+    # At terminal period: can't die in debt
+    d_limit = zeros(jpnts)
+    
+    for j in (jpnts-1):-1:1
+        if j >= j_grad
+            # Working: minimum income at this age
+            y_min = g(R, j, e, m) * z_min
+            # Natural limit: PV of (min_income - c_floor) plus next period's limit
+            d_limit[j] = (y_min - c_floor + d_limit[j+1]) / (1 + r_loan)
+        else
+            # In school: no labor income (or reduced)
+            y_school = 0.0  # or part-time work if you allow it
+            d_limit[j] = (y_school - c_floor + d_limit[j+1]) / (1 + r_loan)
+        end
+    end
+    
+    return d_limit
+end

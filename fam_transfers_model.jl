@@ -52,6 +52,17 @@ function model_create(;
         push!(tasks_idx, (R, m, n, e, i_a, i_z))
     end
 
+    # Borrowing limit
+    d_limit = zeros(jpnts, length(Race), length(ed_type), length(marital_status), 2)  
+
+    for R in Race, e in ed_type, m in marital_status, dc in 1:2
+        d_limit[:, R, e, m, dc] = compute_natural_borrowing_limit(model, R, e, m, dc)
+    end
+
+    max_debt = maximum(d_limit)  # largest possible debt across all types
+    d_points = [-max_debt, -max_debt*0.75, -max_debt*0.5, -max_debt*0.25, -5000.0, -1000.0, 0.0]
+    school_a_grid = [d_points; a_grid[2:end]]
+
     # precompute resources after shocks and probability of shocks
     shock_resources = zeros(Float64, working_years, 2, 2, 6, 4, 3,  apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
     prob_shocks = zeros(Float64, working_years, 2, 2, 4, 6, 3, apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n,t,  e, i_a, i_z, shock_in, shock_out, past_in, past_out)
@@ -108,5 +119,5 @@ function model_create(;
     end     
 
 
-    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, tasks_idx, shock_resources, prob_shocks)
+    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, shock_resources, prob_shocks)
 end

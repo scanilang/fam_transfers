@@ -3,27 +3,51 @@
 ###############################################################################################
 
 function VSj(vjp1, model, j)
-    (; beta, gamma, shock_resources) = model
+    (; beta, gamma, r, r_loan, d_limit, school_a_grid, z_grid,
+       tuition_2yr, tuition_4yr, Race, fam_type, ed_type) = model
 
-    @threads for idx in eachindex(tasks_idx)
-        (R, t, e, i_a, i_z) = tasks_idx[idx]
+    @threads for idx in eachindex(school_tasks_idx)
+        (R, t, e, i_a, i_z) = school_tasks_idx[idx]
         
-        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-
-            resources = shock_resources[j, R, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
+        # e=2 is 2yr, e=3 is 4yr (e=1 is no college, shouldn't be here)
+        tuition = e == 2 ? tuition_2yr : tuition_4yr
         
-            result = optimize(ap1 -> - (u(resources - ap1, gamma) + beta *  sj* EVS_jp1(model, vjp1, R, t, ap1, i_z)),
-                            0.0, resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
-
-            VSj[R, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-            SPFj[R, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+        a = school_a_grid[i_a]
+        
+        # Resources: asset return + parental transfer - tuition
+        parental_transfer = expected_edu_transfer(R, n, m, j, y, a_income, e, t, e - 1)
+        # e-1 maps ed_type to degree_choice: e=2→1(2yr), e=3→2(4yr)
+        
+        if a >= 0
+            resources = a * (1 + r) + parental_transfer - tuition
+        else
+            resources = a * (1 + r_loan) + parental_transfer - tuition
+        end
+        
+        # Natural borrowing limit at this age
+        borrow_floor = -d_limit[j, R, e]
+        
+        # Ensure feasible optimization bounds
+        ub = resources - 0.001
+        lb = max(borrow_floor, ub - 1e6)  # lb must be < ub
+        
+        if ub <= lb
+            # Can't afford anything — assign very low value
+            VSj[R, t, e, i_a, i_z] = -1e10
+            SPFj[R, t, e, i_a, i_z] = lb
+        else
+            result = optimize(
+                ap1 -> -(u(max(resources - ap1, 0.001), gamma) + 
+                         beta * EVS_jp1(model, vjp1, R, t, e, ap1, i_z)),
+                lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             
+            VSj[R, t, e, i_a, i_z] = -result.minimum
+            SPFj[R, t, e, i_a, i_z] = result.minimizer
         end
     end
 
     return VSj, SPFj
 end
-
 function EVS_jp1(model, vjp1, R, t, ap1, i_z)
     (; prob_shocks ) = model
 
