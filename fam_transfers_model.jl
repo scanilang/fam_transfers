@@ -113,7 +113,7 @@ function model_create(;
 
                     
                     shock_resources[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = y - y_tax + shock_in_amount + shock_out_amount + a_next
-                    net_transfers[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = shock_in_amount + shock_out_amount
+                    net_transfers[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = (shock_in-1)*shock_in_amount + (shock_out-1)*shock_out_amount
                     prob_shocks[j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = shock_in_prob * shock_out_prob
                 end
             end
