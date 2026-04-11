@@ -67,6 +67,7 @@ function model_create(;
     shock_resources = zeros(Float64, working_years, 2, 2, 6, 4, 3,  apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
     net_transfers = zeros(Float64, working_years, 2, 2, 6, 4, 3,  apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out)
     prob_shocks = zeros(Float64, working_years, 2, 2, 4, 6, 3, apnts, zpnts, 2, 2, 2, 2) # (j, R, m, n,t,  e, i_a, i_z, shock_in, shock_out, past_in, past_out)
+    y_values = zeros(Float64, 2, working_years, 2, 4, 3, zpnts) # (R, j, m, t, e, i_z)
 
     for j in 1:working_years, R in Race, m in marital_status, n in fam_size, e in ed_type, t in fam_type
         for i_a in 1:apnts
@@ -76,10 +77,12 @@ function model_create(;
                 for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
                     if j < working_years
                         y = g(R, j, e, m) * z_grid[R][i_z]
+                        y_values[R, j, m, t, e, i_z] = y
                         y_tax = tax_y(y, m)
                     else
                         y = g(R, 22, e, m) * z_grid[R][i_z] * 0.4 # assume income drops to 40% of last working year in retirement
                         y_tax = 0.0
+                        y_values[R, j, m, t, e, i_z] = y
                     end
 
                     shock_in_amount = transfers_in_amount(r, n, m, j, y, a_income, e, t)
@@ -121,5 +124,5 @@ function model_create(;
     end     
 
 
-    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, shock_resources, net_transfers, prob_shocks)
+    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, y_values, shock_resources, net_transfers, prob_shocks)
 end

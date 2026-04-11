@@ -41,13 +41,13 @@ end
 
 function g( r,j,e, m)
     age = j + 17
-    e_1 = e == 1 ? 1 : 0
+    e_2 = e == 2 ? 1 : 0
     e_0 = e == 0 ? 1 : 0
 
     if r == 2
-        g = β_black_income[1] + β_black_income[2]*age + β_black_income[3]*age^2 + β_black_income[4]*age^3 + β_black_income[5]*e_0 + β_black_income[6]*e_1 + β_black_income[7]*m + β_black_income[26]
+        g = β_black_income[1] + β_black_income[2]*age + β_black_income[3]*age^2 + β_black_income[4]*age^3 + β_black_income[5]*e_0 + β_black_income[6]*e_2 + β_black_income[7]*m + β_black_income[26]
     else
-        g = β_white_income[1] + β_white_income[2]*age + β_white_income[3]*age^2 + β_white_income[4]*age^3 + β_white_income[5]*e_0 + β_white_income[6]*e_1 + β_white_income[7]*m + β_white_income[26]
+        g = β_white_income[1] + β_white_income[2]*age + β_white_income[3]*age^2 + β_white_income[4]*age^3 + β_white_income[5]*e_0 + β_white_income[6]*e_2 + β_white_income[7]*m + β_white_income[26]
     end
     return g
 end
