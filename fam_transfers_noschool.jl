@@ -21,9 +21,6 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
         wnc_itp = LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t, :, :, :, :], extrapolation_bc=Flat())
     end
 
-    # Lower bound: no college can't borrow
-    lb = 0.0
-
     @threads for idx in eachindex(tasks_idx_nc)
         (R, m, n, i_a, i_z) = tasks_idx_nc[idx]
 
@@ -41,16 +38,16 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
             if j == fam_shock_age
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
 
             elseif j < working_years
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EVnc_jp1(model, vncjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EWnc_jp1(model, wncjp1_itp, j, R, m, m, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
             Vj_nc[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
