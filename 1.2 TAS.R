@@ -15,13 +15,15 @@ tas_clean <- tas_raw %>%
   mutate(Year = Survey_Year - 1) %>% 
   left_join(cpi_data %>% select(year, ratio_2010), by = c("Year" = "year")) %>% 
   mutate(across(matches("^Help_.*Amount_Parents$"), ~ na_if(na_if(., 9999998), 9999999)),
+         across(ends_with("_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
+         across(matches("Help_Personal_Loan_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
+         across(matches("Help_Other_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
          across(matches("^Help_.*Percent_Parents$"), ~ na_if(na_if(., 998), 999)),
          across(matches("^Help_.*Amount_Parents$"), ~ . * ratio_2010),
+         across(ends_with("_Amount"), ~ . * ratio_2010),
          across(starts_with("Gifts_Inheritance"), ~ na_if(na_if(., 9999998), 9999999)),
          across(starts_with("Gifts_Inheritance"), ~ na_if(na_if(., 9999998), 9999999)),
          across(starts_with("Tuition_Amount"), ~ na_if(na_if(., 9999998), 9999999)),
-         Tuition_Amount = Tuition_Amount * ratio_2010,
-         Student_Loan_Amount = Student_Loan_Amount * ratio_2010,
          Help_Tuition = if_else(Help_Tuition == 1, 1, 0)) %>%
   mutate(college_status = case_when(Enrollment_Status == 9 ~ "Enrolled, no prior degree",
                                     Enrollment_Status == 10 ~ "Enrolled, prior degree",
@@ -140,7 +142,9 @@ tas_clean <- tas_raw %>%
     Year %in% 2011:2020 ~ "2011-2020",
     TRUE ~ NA_character_
   )) %>% 
-  left_join(psid_clean %>% rename(Marital_Status_Parents = Marital_Status) %>% select(Family_ID, Survey_Year, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type))
+  left_join(psid_clean %>% rename(Marital_Status_Parents = Marital_Status) %>% 
+              select(Family_ID, Survey_Year, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type),
+              by = c("Family_ID" = "Family_ID", "Survey_Year" = "Survey_Year"))
 
 #######################################################################################
 # Tuition Amount
@@ -160,7 +164,85 @@ tuition_amount = tas_clean %>%
     avg_tuition = weighted.mean(tuition_annual, w = Individual_Weight, na.rm = TRUE),
     n = n(),
     .groups = "drop")
-            
+
+#######################################################################################
+# Living Support During School (non-tuition transfers)
+#######################################################################################
+
+tas_school_transfers <- tas_clean %>%
+  filter(Enrollment_Status %in% c(9, 10),      # currently enrolled
+         Part_or_Full_Time_Student == 1, 
+         Survey_Year >= 2017,
+         Race_Head %in% c("White", "Black")) %>%     # full time
+  mutate(
+    # Construct parental amount for each category
+    # Use amount if available, otherwise pct * total
+    Help_Rent_Mortgage_Parents = case_when(
+      Help_Rent_Mortgage_Amount_Parents > 0 ~ Help_Rent_Mortgage_Amount_Parents,
+      Help_Rent_Mortgage_Percent_Parents > 0 ~ Rent_Mortgage_Amount * (Help_Rent_Mortgage_Percent_Parents / 100),
+      Help_Rent_Mortgage == 1 ~ NA_real_,  # helped but amount unknown
+      TRUE ~ 0
+    ),
+    
+    Help_House_Parents = case_when(
+      Help_House_Amount_Parents > 0 ~ Help_House_Amount_Parents,
+      Help_House_Percent_Parents > 0 ~ House_Amount * (Help_House_Percent_Parents / 100),
+      Help_House == 1 ~ NA_real_,  # helped but amount unknown
+      TRUE ~ 0
+    ),
+    
+    Help_Bills_Parents = case_when(
+      Help_Bills_Amount_Parents > 0 ~ Help_Bills_Amount_Parents,
+      Help_Bills_Percent_Parents > 0 ~ Bills_Amount * (Help_Bills_Percent_Parents / 100),
+      Help_Bills == 1 ~ NA_real_,
+      TRUE ~ 0
+    ),
+    Help_Vehicle_Parents = case_when(
+      Help_Personal_Vehicle_Amount_Parents > 0 ~ Help_Personal_Vehicle_Amount_Parents,
+      Help_Personal_Vehicle_Percent_Parents > 0 ~ Personal_Vehicle_Amount * (Help_Personal_Vehicle_Percent_Parents / 100),
+      Help_Personal_Vehicle == 1 ~ NA_real_,
+      TRUE ~ 0
+    ),
+    Help_Other_Parents = case_when(
+      Help_Other_Amount > 0 & Help_Other == 1 ~ Help_Other_Amount,
+      Help_Other == 1 ~ NA_real_,
+      TRUE ~ 0
+    ),
+    Help_Personal_Loan_Parents =  case_when(
+      Help_Personal_Loan_Amount > 0 ~ Help_Personal_Loan_Amount,
+      Help_Personal_Loan == 1 ~ NA_real_,
+      TRUE ~ 0
+    ),
+    
+    # Total non-tuition living support
+    Living_Support = Help_Rent_Mortgage_Parents + Help_Bills_Parents + Help_Vehicle_Parents + Help_Other_Parents + Help_Personal_Loan_Parents + Help_House_Parents,
+  
+    Living_Support_Indicator = as.integer(Living_Support > 0),
+    
+    # Also compute total support including tuition for comparison
+   # Total_Support = Living_Support 
+    
+  ) %>% 
+  select(Family_ID, Survey_Year, Race, Race_Head, Head_College, log_asset_income, log_nonasset_income, Marital_Status_Parents, Family_Unit_Size, family_type, 
+         Living_Support_Indicator, Help_Rent_Mortgage_Parents,Help_Bills_Amount_Parents, Help_Vehicle_Parents, Help_Personal_Loan_Parents, 
+         Help_Other_Parents,Help_House_Parents, Individual_Weight, Living_Support )
+
+write.csv(tas_school_transfers, "../data/tas_school_transfers.csv")
+
+# Descriptives
+tas_school_transfers %>%
+  filter(Race_Head %in% c(1, 2)) %>%
+  mutate(Race_label = if_else(Race_Head == 1, "White", "Black")) %>%
+  group_by(Race_label) %>%
+  summarize(
+    n = n(),
+    share_any_living = weighted.mean(Living_Support_Indicator, Individual_Weight, na.rm = TRUE),
+    mean_living_if_pos = weighted.mean(Living_Support[Living_Support > 0], 
+                                        Individual_Weight[Living_Support > 0], na.rm = TRUE),
+     mean_total_support = weighted.mean(Total_Support, Individual_Weight, na.rm = TRUE),
+    .groups = "drop"
+  )
+  
 #######################################################################################
 # Some Summaries
 #######################################################################################

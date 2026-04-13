@@ -2,11 +2,14 @@
 # School
 ###############################################################################################
 
-function VSj_first_period(vsjp1, model)
+function VSj_first_period(vsjp1, Vj_1c, PFj_1c, model)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
        tuition_2yr, tuition_4yr) = model
 
-    vsjp1_itp = [LinearInterpolation((a_grid), vsjp1[R, m, n, t, e, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+    fill!(Vj_1c, 0f0)
+    fill!(PFj_1c, 0f0)
+
+    vsjp1_itp = [LinearInterpolation((a_grid, z_grid), vsjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
     @threads for idx in eachindex(school_tasks_idx)
@@ -22,7 +25,7 @@ function VSj_first_period(vsjp1, model)
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2, prob_help in 1:2
 
             edu_transfer = prob_help == 2 ? amt_help : 0.0
-            intervivos_transfers = net_transfers[1, R, m, n, e, i_a, 1, shock_in, shock_out, past_in, past_out] # Assuming z_idx = 1 for first period?
+            intervivos_transfers = net_transfers[1, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] # Assuming z_idx = 1 for first period?
             
             if a >= 0
                 resources = a * (1 + r) + edu_transfer - tuition/e + intervivos_transfers
@@ -31,24 +34,24 @@ function VSj_first_period(vsjp1, model)
             end
             
             borrow_floor = -d_limit[1, R, e]
-            ub = resources - 0.001
+            ub = resources
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                VSj_arr[R, t, e, i_a, shock_in] = -1e10
-                SPFj_arr[R, t, e, i_a, shock_in] = lb
+                Vj_1c[R, m, n, t, e, i_a] = -1e10
+                PFj_1c[R, m, n, t, e, i_a] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                             beta * EVS_jp1((model, vsjp1_itp, R, t, e, ap1, i_z))),
+                             beta * EVS_jp1((model, vsjp1_itp, R, m, n, t, e, ap1, i_z))),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                VSj_arr[R, t, e, i_a, shock_in] = -result.minimum
-                SPFj_arr[R, t, e, i_a, shock_in] = result.minimizer
+                Vj_1c[R, t, e, i_a, shock_in] = -result.minimum
+                PFj_1c[R, t, e, i_a, shock_in] = result.minimizer
             end
         end
     end
-    return VSj_arr, SPFj_arr
+    return Vj_1c, PFj_1c
 end
 
 function VSj_enrolled(vsjp1_itp, vjp1, model, j)
@@ -234,7 +237,6 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, ap1, i_z, shock_in, shock_out
                     continue  
                 end
 
-                
                 # probability of shock in and shock out next period
                 shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
                 shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)

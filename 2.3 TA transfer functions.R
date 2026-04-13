@@ -3,28 +3,34 @@ library(margins)
 library(brglm2)
 library(stargazer)
 
+# Support given when a student
+
 ##############################################################################################################################################################################
 # Read in clean data
 ##############################################################################################################################################################################
 
-tas_clean = read.csv('../data/tas_clean.csv') 
+tas_school_transfers = read.csv('../data/tas_school_transfers.csv') 
 
 ##############################################################################################################################################################################
 # Step 1: Probit
 ##############################################################################################################################################################################
 
-white_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                         Marital_Status + family_type + Year_bins_edu,
+white_probit_student_support = glm(Living_Support_Indicator ~ log_nonasset_income + log_asset_income + Head_College,
                        family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "White", Enrollment_Status %in% c(9, 10),  # currently enrolled
-                                                   Part_or_Full_Time_Student == 1))
-summary(white_probit_edu)
+                       data = tas_school_transfers)
+summary(white_probit_student_support)
 
-black_probit_edu = glm(Help_Tuition ~ log_nonasset_income + log_asset_income  + Head_College  + Year_bins_edu,
+black_probit_student_support = glm(Living_Support_Indicator ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                                     Marital_Status_Parents + family_type,
                        family = binomial(link = "probit"), 
-                       data = tas_clean %>% filter(Race_Head == "Black", Enrollment_Status %in% c(9, 10),  # currently enrolled
-                                                   Part_or_Full_Time_Student == 1))
-summary(black_probit_edu)
+                       data = tas_school_transfers %>% filter(Race_Head == "Black"))
+summary(black_probit_student_support)
+
+student_support_probit = glm(Living_Support_Indicator ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
+                               Marital_Status_Parents + Race_Head,
+                             family = binomial(link = "probit"), 
+                             data = tas_school_transfers)
+summary(student_support_probit)
 
 
 ##############################################################################################################################################################################
