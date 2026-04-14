@@ -2,12 +2,12 @@
 # School
 ###############################################################################################
 
-function VSj_first_period(vsjp1, Vj_1c, PFj_1c, model)
+function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
        tuition_2yr, tuition_4yr) = model
 
-    fill!(Vj_1c, 0f0)
-    fill!(PFj_1c, 0f0)
+    fill!(Vsj_1, 0f0)
+    fill!(PFsj_1, 0f0)
 
     vsjp1_itp = [LinearInterpolation((a_grid, z_grid), vsjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
@@ -22,15 +22,14 @@ function VSj_first_period(vsjp1, Vj_1c, PFj_1c, model)
         prob_help = edu_transfer_prob(R, n, m, e, y, a_income, e, t, degree_choice)
         amt_help  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
         
-        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2, prob_help in 1:2
+        for prob_help in 1:2
 
             edu_transfer = prob_help == 2 ? amt_help : 0.0
-            intervivos_transfers = net_transfers[1, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out] # Assuming z_idx = 1 for first period?
             
             if a >= 0
-                resources = a * (1 + r) + edu_transfer - tuition/e + intervivos_transfers
+                resources = a * (1 + r) + edu_transfer - tuition/e 
             else
-                resources = a * (1 + r_loan) + edu_transfer - tuition/e + intervivos_transfers
+                resources = a * (1 + r_loan) + edu_transfer - tuition/e 
             end
             
             borrow_floor = -d_limit[1, R, e]
@@ -38,25 +37,32 @@ function VSj_first_period(vsjp1, Vj_1c, PFj_1c, model)
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vj_1c[R, m, n, t, e, i_a] = -1e10
-                PFj_1c[R, m, n, t, e, i_a] = lb
+                Vsj_1[R, m, n, t, e, i_a] = -1e10
+                PFsj_1[R, m, n, t, e, i_a] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
                              beta * EVS_jp1((model, vsjp1_itp, R, m, n, t, e, ap1, i_z))),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                Vj_1c[R, t, e, i_a, shock_in] = -result.minimum
-                PFj_1c[R, t, e, i_a, shock_in] = result.minimizer
+                Vsj_1[R, t, e, i_a, shock_in] = -result.minimum
+                PFsj_1[R, t, e, i_a, shock_in] = result.minimizer
             end
         end
     end
-    return Vj_1c, PFj_1c
+    return Vsj_1, PFsj_1
 end
 
-function VSj_enrolled(vsjp1_itp, vjp1, model, j)
+function VSj_enrolled(vsjp1, vjp1, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
        tuition_2yr, tuition_4yr) = model
+
+    fill!(Vsj, 0f0)
+    fill!(PFsj, 0f0)
+
+    vsjp1_itp = [LinearInterpolation((a_grid, z_grid), vsjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+                                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+
 
     @threads for idx in eachindex(school_tasks_idx)
         (R, t, e, i_a) = school_tasks_idx[idx]
@@ -78,10 +84,10 @@ function VSj_enrolled(vsjp1_itp, vjp1, model, j)
             VSj_arr[R, t, e, i_a] = -1e10
             SPFj_arr[R, t, e, i_a] = lb
         else
-            if j == 2 & e == 2
+            if j == 2 & e == 2 || j == 4 & e == 4
                result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * EV_jp1(model, vjp1, R, t, e, ap1)),
+                         beta * EVc_jp1(model, vjp1, j, R, 2, 1, ap1, 0, 0, 0, 0, 0)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else 
                 result = optimize(
@@ -90,11 +96,11 @@ function VSj_enrolled(vsjp1_itp, vjp1, model, j)
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
             
-            VSj_arr[R, t, e, i_a] = -result.minimum
-            SPFj_arr[R, t, e, i_a] = result.minimizer
+            Vsj[R, t, e, i_a] = -result.minimum
+            PFsj[R, t, e, i_a] = result.minimizer
         end
     end
-    return VSj_arr, SPFj_arr
+    return Vsj, PFsj
 end
 
 
