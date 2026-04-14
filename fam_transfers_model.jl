@@ -47,9 +47,19 @@ function model_create(;
     a_grid = [0.0; 500.0; polyexpandgrid(apnts-2, 2000.0, exp(a_max), 2.75)]
 
     # State space for parallelization
-    tasks_idx = Vector{NTuple{6, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, e in ed_type, i_a in 1:apnts, i_z in 1:zpnts
-        push!(tasks_idx, (R, m, n, e, i_a, i_z))
+    tasks_idx_nc = Vector{NTuple{6, Int64}}()
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, i_a in 1:apnts, i_z in 1:zpnts
+        push!(tasks_idx_nc, (R, m, n, t, i_a, i_z))
+    end
+
+    tasks_idx_c1 = Vector{NTuple{6, Int64}}()
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, i_a in 1:apnts, i_z in 1:zpnts
+        push!(tasks_idx_c1, (R, m, n, t, e, i_a, i_z))
+    end
+
+    tasks_idx_c = Vector{NTuple{6, Int64}}()
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, i_a in 1:apnts, i_z in 1:zpnts
+        push!(tasks_idx_c, (R, m, n, t, e, i_a, i_z))
     end
 
     # Borrowing limit
@@ -83,7 +93,6 @@ function model_create(;
     prob_shocks_nc     = zeros(Float64, working_years, 2, 2, 6, 4, apnts_nc, zpnts, 2, 2, 2, 2)
     # dimensions: (j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out)
 
-    e = 1  # no college
     for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type
         for i_a in 1:apnts_nc
             a = a_grid_nocollege[i_a]
@@ -91,14 +100,14 @@ function model_create(;
             a_next   = R == 1 ? a * (1 + ra_w * (1 - tax_a)) : a * (1 + ra_b * (1 - tax_a))
 
             for i_z in 1:zpnts
-                y = y_values[R, j, m, e, i_z]
+                y = y_values[R, j, m, 0, i_z]
                 y_tax = j < working_years ? tax_y(y, m) : 0.0
 
                 for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-                    shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, e, t)
-                    shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, e, t)
-                    prob_in  = shocks_in_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
-                    prob_out = shocks_out_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
+                    shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, 0, t)
+                    shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, 0, t)
+                    prob_in  = shocks_in_prob(R, n, m, j, y, a_income, 0, t, past_in, past_out)
+                    prob_out = shocks_out_prob(R, n, m, j, y, a_income, 0, t, past_in, past_out)
 
                     shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
                     shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
@@ -122,10 +131,10 @@ function model_create(;
     net_transfers_c   = zeros(Float64, working_years, 2, 2, 6, 4, 2, apnts_c, zpnts, 2, 2, 2, 2)
     prob_shocks_c     = zeros(Float64, working_years, 2, 2, 6, 4, 2, apnts_c, zpnts, 2, 2, 2, 2)
     # dimensions: (j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out)
-    # e_idx: 1 = 2yr (e=2), 2 = 4yr (e=3)
+    # e_idx: 1 = 2yr (e=2), 2 = 4yr (e=4)
 
-    for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type, e in [2, 3]
-        e_idx = e - 1  # maps e=2→1, e=3→2
+    for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type, e in [2, 4]
+        e_idx = e - 1  # maps e=2→1, e=4→2
         for i_a in 1:apnts_c
             a = a_grid_college[i_a]
             if a >= 0
@@ -164,5 +173,5 @@ function model_create(;
     end
 
 
-    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
+    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx_nc, tasks_idx_c1, tasks_idx_c, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
 end

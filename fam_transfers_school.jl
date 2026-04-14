@@ -1,52 +1,55 @@
 ###############################################################################################
 # School
 ###############################################################################################
+#prob_help = edu_transfer_prob(R, n, m, e, y, a_income, e, t, degree_choice)
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
-    (; beta, gamma, r, r_loan, a_grid_college, d_limit,
+    (; beta, gamma, ra_w, ra_b, tasks_idx_c1, a_grid_nocollege, d_limit,
        tuition_2yr, tuition_4yr) = model
 
     fill!(Vsj_1, 0f0)
     fill!(PFsj_1, 0f0)
 
-    vsjp1_itp = [LinearInterpolation((a_grid, z_grid), vsjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
-                                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    vsjp1_itp = [LinearInterpolation((a_grid_nocollege), vsjp1[R, m, n, t, e, :], extrapolation_bc=Interpolations.Flat()) 
+                                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type]
 
-    @threads for idx in eachindex(school_tasks_idx)
-        (R, t, e, i_a) = school_tasks_idx[idx]
+    @threads for idx in eachindex(tasks_idx_c1)
+       (R, m, n, t, e, i_a, i_z) = tasks_idx_c1[idx]
         
-        a = a_grid_college[i_a]
+        # Skip negative assets in first period since they can't borrow yet    
+        a = a_grid_nocollege[i_a]
+
         tuition = e == 2 ? tuition_2yr : tuition_4yr
-        
-        # Total expected parental transfer (lump sum) (based on parents characteristics and student's degree choice)
-        prob_help = edu_transfer_prob(R, n, m, e, y, a_income, e, t, degree_choice)
-        amt_help  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
-        
-        for prob_help in 1:2
+        r = R == 1 ? ra_w : ra_b
+        vsjp1 = vsjp1_itp[R, m, n, t, e, :]
 
-            edu_transfer = prob_help == 2 ? amt_help : 0.0
-            
-            if a >= 0
-                resources = a * (1 + r) + edu_transfer - tuition/e 
+        for edu_help in 1:2, degree in 1:2
+
+            degree_choice  = [2, 4][degree]
+            if edu_help == 2
+                # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
+                edu_transfer  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
             else
-                resources = a * (1 + r_loan) + edu_transfer - tuition/e 
+                edu_transfer = 0.0
             end
             
-            borrow_floor = -d_limit[1, R, e]
+            resources = a * (1 + r) + edu_transfer - tuition/degree_choice 
+            
+            borrow_floor = -d_limit[1, R, degree_choice]
             ub = resources
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vsj_1[R, m, n, t, e, i_a] = -1e10
-                PFsj_1[R, m, n, t, e, i_a] = lb
+                Vsj_1[R, m, n, t, e, i_a, i_z] = -1e10
+                PFsj_1[R, m, n, t, e, i_a, i_z] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                             beta * EVS_jp1((model, vsjp1_itp, R, m, n, t, e, ap1, i_z))),
+                             beta * vsjp1[R, m, n, t, e, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                Vsj_1[R, t, e, i_a, shock_in] = -result.minimum
-                PFsj_1[R, t, e, i_a, shock_in] = result.minimizer
+                Vsj_1[R, m, n, t, e, i_a, i_z, edu_help, degree] = -result.minimum
+                PFsj_1[R, m, n, t, e, i_a, i_z, edu_help, degree] = result.minimizer
             end
         end
     end
@@ -55,27 +58,31 @@ end
 
 function VSj_enrolled(vsjp1, vjp1, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
-       tuition_2yr, tuition_4yr) = model
+       tuition_2yr, tuition_4yr, tasks_idx_c) = model
 
     fill!(Vsj, 0f0)
     fill!(PFsj, 0f0)
 
-    vsjp1_itp = [LinearInterpolation((a_grid, z_grid), vsjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
+    vsjp1_itp = [LinearInterpolation((a_grid_college), vsjp1[R, m, n, t, e, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
 
-    @threads for idx in eachindex(school_tasks_idx)
-        (R, t, e, i_a) = school_tasks_idx[idx]
+    @threads for idx in eachindex(tasks_idx_c)
+       (R, m, n, t, e, i_a) = tasks_idx_c[idx]
         
         a = a_grid_college[i_a]
         tuition = e == 2 ? tuition_2yr : tuition_4yr
-        
+        r = R == 1 ? ra_w : ra_b
+
         if a >= 0
             resources = a * (1 + r) - tuition
         else
             resources = a * (1 + r_loan) - tuition
         end
         
+        vsjp1 = vsjp1_itp[R, m, n, t, e, :]
+
+
         borrow_floor = -d_limit[j, R, e]
         ub = resources - 0.001
         lb = max(borrow_floor, ub - 1e6)
@@ -92,7 +99,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             else 
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * EVS_jp1(model, vsjp1_itp, R, t, e, ap1)),
+                         beta * vsjp1[R, m, n, t, e, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
             
@@ -103,17 +110,6 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
     return Vsj, PFsj
 end
 
-
-function EVS_jp1(model, vsjp1_itp, R, t, e, ap1)
-    (; prob_shocks ) = model
-
-    expected_value = 0.0
-    for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-        expected_value += prob_shocks[jp1, R, m, n, e, i_z, shock_in, shock_out, past_in, past_out] * vsjp1_itp[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out](ap1)
-    end
-
-    return expected_value
-end
 # Value function for those that chose not to attend college
 # Positive assets only
 # e = 0 no college
