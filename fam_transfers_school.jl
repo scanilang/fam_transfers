@@ -5,7 +5,7 @@
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     (; beta, gamma, ra_w, ra_b, tasks_idx_c1, a_grid_nocollege, d_limit,
-       tuition_2yr, tuition_4yr) = model
+       tuition_2yr, tuition_4yr, y_values) = model
 
     fill!(Vsj_1, 0f0)
     fill!(PFsj_1, 0f0)
@@ -22,12 +22,13 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
         tuition = e == 2 ? tuition_2yr : tuition_4yr
         r = R == 1 ? ra_w : ra_b
         vsjp1 = vsjp1_itp[R, m, n, t, e, :]
-
         for edu_help in 1:2, degree in 1:2
 
             degree_choice  = [2, 4][degree]
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
+                a_income = a* r
+                y = y_values[R, 60, m, e, i_z]
                 edu_transfer  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
             else
                 edu_transfer = 0.0
