@@ -89,9 +89,9 @@ end
 β_edu_probit = Tuple(edu_transfer_probit.pooled_probit_edu)
 β_edu_amount = Tuple(edu_transfer_amount.pooled_transfer_edu)
 
-function edu_transfer_prob(r, n, m, j, y, a_income, e, t, degree_choice)
-    race_white = r == 1 ? 1 : 0
-    is_4yr     = degree_choice == 2 ? 1 : 0
+function edu_transfer_prob(R, n, m, y, a_income, e, t, degree_choice)
+    race_white = R == 1 ? 1 : 0
+    is_4yr     = degree_choice == 2 ? 0 : 1
     e_0 = e == 0 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
     m_single = m == 0 ? 1 : 0
@@ -122,9 +122,9 @@ end
 # [4] Head_CollegeNo College   [5] Head_CollegeSome College [6] degree_type_final4yr
 # [7] enroll_era2009-2012      [8] enroll_erapre-2002       [9] Race_HeadWhite
 
-function edu_transfer(r, y, a_income, e, degree_choice)
-    race_white = r == 1 ? 1 : 0
-    is_4yr     = degree_choice == 2 ? 1 : 0
+function edu_transfer(R, y, a_income, e, degree_choice)
+    race_white = R == 1 ? 1 : 0
+    is_4yr     = degree_choice == 2 ? 0 : 1
     e_0 = e == 0 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
 
@@ -142,8 +142,8 @@ function edu_transfer(r, y, a_income, e, degree_choice)
 end
 
 # Expected education transfer: P(help) × E(amount | help)
-function expected_edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
-    prob   = edu_transfer_prob(r, n, m, j, y, a_income, e, t, degree_choice)
+function expected_edu_transfer(r, n, m, y, a_income, e, t, degree_choice)
+    prob   = edu_transfer_prob(r, n, m, y, a_income, e, t, degree_choice)
     amount = edu_transfer(r, y, a_income, e, degree_choice)
     return prob * amount
 end
@@ -176,11 +176,11 @@ function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
 
     if r == 2 
         val = β_black_probit_out[1] + β_black_probit_out[2]*log(y) + β_black_probit_out[3]*log(a_income +1 ) + β_black_probit_out[4]*age +  
-        β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_2 + β_black_probit_out[9]*m
+        β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_2 + β_black_probit_out[9]*m + 
         β_black_probit_out[10]*f_1 + β_black_probit_out[11]*f_2 + β_black_probit_out[12]*f_3 + β_black_probit_out[13]*past_in + β_black_probit_out[14]*past_out + β_white_probit_out[20]
     else
         val = β_white_probit_out[1] + β_white_probit_out[2]*log(y) + β_white_probit_out[3]*log(a_income +1 ) + β_white_probit_out[4]*age + 
-        β_white_probit_out[5]*age^2 + β_white_probit_out[6]*n + β_white_probit_out[7]*e_0 + β_white_probit_out[8]*e_2 + β_white_probit_out[9]*m
+        β_white_probit_out[5]*age^2 + β_white_probit_out[6]*n + β_white_probit_out[7]*e_0 + β_white_probit_out[8]*e_2 + β_white_probit_out[9]*m + 
         β_white_probit_out[10]*f_1 + β_white_probit_out[11]*f_2 + β_white_probit_out[12]*f_3 + β_white_probit_out[13]*past_in + β_white_probit_out[14]*past_out + β_white_probit_out[20]
     end
 
@@ -197,11 +197,11 @@ function transfers_out_amount(r,n,m, j, y, a_income, e, t)
 
     if r == 2 
         val = β_black_transfer_out[1] + β_black_transfer_out[2]*log(y) + β_black_transfer_out[3]*log(a_income +1 ) + β_black_transfer_out[4]*age + 
-        β_black_transfer_out[5]*age^2 + β_black_transfer_out[6]*n + β_black_transfer_out[7]*e_0 + β_black_transfer_out[8]*e_2 + β_black_transfer_out[9]*m
+        β_black_transfer_out[5]*age^2 + β_black_transfer_out[6]*n + β_black_transfer_out[7]*e_0 + β_black_transfer_out[8]*e_2 + β_black_transfer_out[9]*m + 
         β_black_transfer_out[10]*f_1 + β_black_transfer_out[11]*f_2 + β_black_transfer_out[12]*f_3 + β_black_transfer_out[14]
     else
         val = β_white_transfer_out[1] + β_white_transfer_out[2]*log(y) + β_white_transfer_out[3]*log(a_income +1 ) + β_white_transfer_out[4]*age + 
-        β_white_transfer_out[5]*age^2 + β_white_transfer_out[6]*n + β_white_transfer_out[7]*e_0 + β_white_transfer_out[8]*e_2 + β_white_transfer_out[9]*m
+        β_white_transfer_out[5]*age^2 + β_white_transfer_out[6]*n + β_white_transfer_out[7]*e_0 + β_white_transfer_out[8]*e_2 + β_white_transfer_out[9]*m + 
         β_white_transfer_out[10]*f_1 + β_white_transfer_out[11]*f_2 + β_white_transfer_out[12]*f_3 + β_white_transfer_out[14]
     end
     return exp(val)
@@ -218,11 +218,11 @@ function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
 
     if r == 2 
         val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income) + β_black_probit_in[4]*age +  
-        β_black_probit_in[5]*age^2 + β_black_probit_in[6]*n + β_black_probit_in[7]*e_0 + β_black_probit_in[8]*e_2 + β_black_probit_in[9]*m
+        β_black_probit_in[5]*age^2 + β_black_probit_in[6]*n + β_black_probit_in[7]*e_0 + β_black_probit_in[8]*e_2 + β_black_probit_in[9]*m + 
         β_black_probit_in[10]*f_1 + β_black_probit_in[11]*f_2 + β_black_probit_in[12]*f_3 + β_black_probit_in[13]*past_in + β_black_probit_in[14]*past_out + β_white_probit_in[20]
     else
         val = β_white_probit_in[1] + β_white_probit_in[2]*log(y) + β_white_probit_in[3]*log(a_income) + β_white_probit_in[4]*age + 
-        β_white_probit_in[5]*age^2 + β_white_probit_in[6]*n + β_white_probit_in[7]*e_0 + β_white_probit_in[8]*e_2 + β_white_probit_in[9]*m
+        β_white_probit_in[5]*age^2 + β_white_probit_in[6]*n + β_white_probit_in[7]*e_0 + β_white_probit_in[8]*e_2 + β_white_probit_in[9]*m + 
         β_white_probit_in[10]*f_1 + β_white_probit_in[11]*f_2 + β_white_probit_in[12]*f_3 + β_white_probit_in[13]*past_in + β_white_probit_in[14]*past_out + β_white_probit_in[20]
     end
 
@@ -239,11 +239,11 @@ function transfers_in_amount(r,n,m,j,y, a_income, e, t)
 
     if r == 2 
         val = β_black_transfer_in[1] + β_black_transfer_in[2]*log(y) + β_black_transfer_in[3]*log(a_income +1 ) + β_black_transfer_in[4]*age + 
-        β_black_transfer_in[5]*age^2 + β_black_transfer_in[6]*n + β_black_transfer_in[7]*e_0 + β_black_transfer_in[8]*e_2 + β_black_transfer_in[9]*m
+        β_black_transfer_in[5]*age^2 + β_black_transfer_in[6]*n + β_black_transfer_in[7]*e_0 + β_black_transfer_in[8]*e_2 + β_black_transfer_in[9]*m + 
         β_black_transfer_in[10]*f_1 + β_black_transfer_in[11]*f_2 + β_black_transfer_in[12]*f_3 + β_black_transfer_in[14]
     else
         val = β_white_transfer_in[1] + β_white_transfer_in[2]*log(y) + β_white_transfer_in[3]*log(a_income +1 ) + β_white_transfer_in[4]*age + 
-        β_white_transfer_in[5]*age^2 + β_white_transfer_in[6]*n + β_white_transfer_in[7]*e_0 + β_white_transfer_in[8]*e_2 + β_white_transfer_in[9]*m
+        β_white_transfer_in[5]*age^2 + β_white_transfer_in[6]*n + β_white_transfer_in[7]*e_0 + β_white_transfer_in[8]*e_2 + β_white_transfer_in[9]*m + 
         β_white_transfer_in[10]*f_1 + β_white_transfer_in[11]*f_2 + β_white_transfer_in[12]*f_3 + β_white_transfer_in[14]
     end
     return exp(val)

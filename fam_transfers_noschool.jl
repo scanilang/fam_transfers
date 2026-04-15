@@ -79,8 +79,8 @@ function EVnc_jp1(model, vjp1, j, R, m, n, ap1, i_z, shock_in, shock_out, past_i
             end
 
             # probability of shock in and shock out next period
-            shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, 1, t, past_in, past_out)
-            shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
             if shock_in_next == 2
                 shock_in_next_prob = shock_in_prob
             else
@@ -124,8 +124,8 @@ function EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_o
                 end
 
                 # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(r,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
-                shock_in_prob = shocks_in_prob(r,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
+                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
+                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
                 if shock_in_next == 2
                     shock_in_next_prob = shock_in_prob
                 else
@@ -202,8 +202,8 @@ function EWnc_jp1(model, wncjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, 
         end
 
         # probability of shock in and shock out next period
-        shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, 1, t, past_in, past_out)
-        shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
         
         if shock_in_next == 2
             shock_in_next_prob = shock_in_prob

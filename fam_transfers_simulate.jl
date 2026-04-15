@@ -1,4 +1,25 @@
 
+function education_decision(model, Vsj_1, Vj_nc_first, R, t, e, i_a)
+    (; a_grid_nocollege, y_values) = model
+    y = y_values[R, 43, m, e, i_z]
+    a_income = R == 1 ? a_grid_nocollege[i_a] * ra_w : a_grid_nocollege[i_a] * ra_b
+    
+    # No college: enter working phase immediately at j=1 with e=1
+    # Need to integrate over initial z and transfer shocks for no-college
+    v_nocollege = EV_nocollege_entry(model, Vj_nc_first, R, t, a_grid_nocollege[i_a])
+
+    # 2yr: integrate over education transfer shock
+    prob_help_2yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 2)  # degree_choice=1
+    v_2yr = prob_help_2yr       * Vsj_1[R, m, e, i_a, i_z, 2, 1] +  # help
+            (1 - prob_help_2yr) * Vsj_1[R, m, e, i_a, i_z, 1, 1]     # no help
+
+    # 4yr: integrate over education transfer shock
+    prob_help_4yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 4)  # degree_choice=2
+    v_4yr = prob_help_4yr       * Vsj_1[R, m, e, i_a, i_z, 2, 2] +  # help
+            (1 - prob_help_4yr) * Vsj_1[R, m, e, i_a, i_z, 1, 2]     # no help
+
+    return argmax((v_nocollege, v_2yr, v_4yr))
+end
 
 function famtransfer_simulate(model, n_agents, seed)
     

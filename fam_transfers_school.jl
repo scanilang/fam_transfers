@@ -98,7 +98,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             if j == 2 & e == 2 || j == 4 & e == 4
                result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * EVc_jp1(model, vjp1, j, R, 1, 1, t, e,ap1, 0, 0, 0, 0, 0)),
+                         beta * EVc_jp1(model, vjp1, j, R, 1, 1, t, e,ap1, 0, 1, 1, 1, 1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else 
                 result = optimize(
@@ -199,8 +199,8 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
             end
 
             # probability of shock in and shock out next period
-            shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
-            shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
+            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
             if shock_in_next == 2
                 shock_in_next_prob = shock_in_prob
             else
@@ -244,8 +244,8 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, sho
                 end
 
                 # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
-                shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
+                shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+                shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
                 if shock_in_next == 2
                     shock_in_next_prob = shock_in_prob
                 else
@@ -325,8 +325,8 @@ function EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e,ap1, i_z, shock_in, shock_ou
         end
         
         # probability of shock in and shock out next period
-        shock_out_prob= shocks_out_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
-        shock_in_prob = shocks_in_prob(r,n,m,jp1,y, a_income, e, t, past_in, past_out)
+        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
         if shock_in_next == 2
             shock_in_next_prob = shock_in_prob
         else
