@@ -1,27 +1,32 @@
 
-function education_decision(model, Vsj_1, Vj_nc_first, R, t, e, i_a)
+function education_decision(model, Vsj_1, vjp1, R, m, t, e, i_a)
     (; a_grid_nocollege, y_values) = model
     y = y_values[R, 43, m, e, i_z]
     a_income = R == 1 ? a_grid_nocollege[i_a] * ra_w : a_grid_nocollege[i_a] * ra_b
-    
+
     # No college: enter working phase immediately at j=1 with e=1
     # Need to integrate over initial z and transfer shocks for no-college
-    v_nocollege = EV_nocollege_entry(model, Vj_nc_first, R, t, a_grid_nocollege[i_a])
+    v_nocollege = EVnc_jp1(model, vjp1, 0, R, 0, 1, a_grid_nocollege[i_a], i_z, 1, 1, 1, 1)
 
     # 2yr: integrate over education transfer shock
-    prob_help_2yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 2)  # degree_choice=1
+    prob_help_2yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 2)  # degree_choice=2
     v_2yr = prob_help_2yr       * Vsj_1[R, m, e, i_a, i_z, 2, 1] +  # help
             (1 - prob_help_2yr) * Vsj_1[R, m, e, i_a, i_z, 1, 1]     # no help
 
     # 4yr: integrate over education transfer shock
-    prob_help_4yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 4)  # degree_choice=2
+    prob_help_4yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 4)  # degree_choice=4
     v_4yr = prob_help_4yr       * Vsj_1[R, m, e, i_a, i_z, 2, 2] +  # help
             (1 - prob_help_4yr) * Vsj_1[R, m, e, i_a, i_z, 1, 2]     # no help
 
     return argmax((v_nocollege, v_2yr, v_4yr))
 end
 
-function famtransfer_simulate(model, n_agents, seed)
+function family_shock()
+
+    return m, n, t
+end
+
+function famtransfer_simulate(model, n_agents, random_seed)
     
     # Model Parameters
     (; Race, marital_status, fam_size, ed_type, fam_type, a_grid, z_grid, ra_w, ra_b, tax_y, tax_a, transfers_in_amount, transfers_out_amount, shocks_in_prob, shocks_out_prob) = model
@@ -47,7 +52,8 @@ function famtransfer_simulate(model, n_agents, seed)
     transfer_in_mat = zeros(n_agents, total_periods)
     transfer_out_mat = zeros(n_agents, total_periods)
     Race_mat = zeros(Int, n_agents)
-    fam_type_mat = zeros(Int, n_agents)
+    fam_type_mat = zeros(n_agents, total_periods)
+    e_mat = zeros(Int, n_agents)
 
     # Precompute draws
     survival_draws = rand(rng, n_agents, n_periods)
@@ -55,6 +61,21 @@ function famtransfer_simulate(model, n_agents, seed)
     shock_out_draws = rand(rng, n_agents, n_periods)
     z_draws = rand(rng, n_agents, n_periods)
 
+    # ---------------------------
+    # Initial conditions
+    # ---------------------------
+
+    # ---------------------------
+    # Education decision at j=0
+    # ---------------------------
+    for i in 1:n_agents
+        R = Race_mat[i]
+        m = marital_status[i]
+        t = fam_type_mat[i, 1]
+        e = ed_type[i]
+        i_a = searchsortedfirst(a_grid_nocollege, assets[i, 1])
+        e_mat[i] = education_decision(model, Vsj_1, vjp1, R, m, t, e, i_a)
+    end
     # ---------------------------
     # Simulation loop
     # ---------------------------
@@ -81,6 +102,13 @@ function famtransfer_simulate(model, n_agents, seed)
             end
 
             # ---------------------------
+            # Family Shock
+            # ---------------------------
+            if age[i,period] == 25
+                m, n, t = family_shock() 
+            end
+
+            # ---------------------------
             # Current state variables used for solving 
             # ---------------------------
             R = Race_mat[i]
@@ -89,7 +117,6 @@ function famtransfer_simulate(model, n_agents, seed)
             n = fam_size[i]
             e = ed_type[i]
             a = assets[i,period]
-            d = debt[i,period]
             z = z_mat[i,period]
 
             # ---------------------------
@@ -124,10 +151,8 @@ function famtransfer_simulate(model, n_agents, seed)
                 # --- Update assets and debt based on optimal decision ---
                 if ap1 >= 0
                     assets[i, period] = ap1
-                    debt[i, period] = 0.0
                 else
                     assets[i, period] = 0.0
-                    debt[i, period] = -ap1      
                 end
             end
 
@@ -150,7 +175,6 @@ function famtransfer_simulate(model, n_agents, seed)
         assets = assets, 
         fam_type_mat = fam_type_mat, 
         age = age, 
-        debt = debt, 
         income = income, 
         z_mat = z_mat,
         z_idx_mat = z_idx_mat,
@@ -182,10 +206,3 @@ function get_itp_function(model, j, savepath)
     return vj_itp, pfj_itp
 end
 
-function education_decision(model, R, t)
-    v_1 = vj_itp[R, 1, n, t, 1, shock_in, shock_out, past_in, past_out](a, z) # education choice 1
-    v_2 = vj_itp[R, 1, n, t, 2, shock_in, shock_out, past_in, past_out](a, z) # education choice 2
-    v_3 = vj_itp[R, 1, n, t, 3, shock_in, shock_out, past_in, past_out](a, z) # education choice 3
-    return argmax((v_1, v_2, v_3))
-    
-end
