@@ -29,7 +29,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
                 a_income = a* r
                 y = y_values[R, 43, m, e, i_z] # Parents age when child is 18
-                edu_transfer  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
+                edu_transfer  = edu_transfer_amount(R, y, a_income, e, degree_choice)
             else
                 edu_transfer = 0.0
             end
@@ -41,16 +41,16 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vsj_1[R, m, n, t, e, i_a, i_z] = -1e10
-                PFsj_1[R, m, n, t, e, i_a, i_z] = lb
+                Vsj_1[R, m, e, i_a, i_z] = -1e10
+                PFsj_1[R, m, e, i_a, i_z] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
                              beta * vsjp1_itp[R, t, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                Vsj_1[R, m, n, t, e, i_a, i_z, edu_help, degree] = -result.minimum
-                PFsj_1[R, m, n, t, e, i_a, i_z, edu_help, degree] = result.minimizer
+                Vsj_1[R, m, e, i_a, i_z, edu_help, degree] = -result.minimum
+                PFsj_1[R, m, e, i_a, i_z, edu_help, degree] = result.minimizer
             end
         end
     end

@@ -122,7 +122,7 @@ end
 # [4] Head_CollegeNo College   [5] Head_CollegeSome College [6] degree_type_final4yr
 # [7] enroll_era2009-2012      [8] enroll_erapre-2002       [9] Race_HeadWhite
 
-function edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
+function edu_transfer(r, y, a_income, e, degree_choice)
     race_white = r == 1 ? 1 : 0
     is_4yr     = degree_choice == 2 ? 1 : 0
     e_0 = e == 0 ? 1 : 0   # No College
@@ -144,7 +144,7 @@ end
 # Expected education transfer: P(help) × E(amount | help)
 function expected_edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
     prob   = edu_transfer_prob(r, n, m, j, y, a_income, e, t, degree_choice)
-    amount = edu_transfer(r, n, m, j, y, a_income, e, t, degree_choice)
+    amount = edu_transfer(r, y, a_income, e, degree_choice)
     return prob * amount
 end
 
