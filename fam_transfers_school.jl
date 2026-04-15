@@ -233,7 +233,7 @@ function EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
 
         for i_zp1 in 1:zpnts
             pi_z =Pimat[i_z, i_zp1]
-            y = y_values[R, jp1, m_next, e_idx, i_z]
+            y = y_values[R, jp1, m_next, e_idx, i_zp1]
             for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
                 # update past in and past out flags based on past flags and past shocks
                 if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 || past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1
