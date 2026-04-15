@@ -43,6 +43,7 @@ function g( r,j,e, m)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
     e_0 = e == 1 ? 1 : 0
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2
         g = β_black_income[1] + β_black_income[2]*age + β_black_income[3]*age^2 + β_black_income[4]*age^3 + β_black_income[5]*e_0 + β_black_income[6]*e_2 + β_black_income[7]*m + β_black_income[26]
@@ -94,7 +95,7 @@ function edu_transfer_prob(R, m, n, y, a_income, e, t, degree_choice)
     is_4yr     = degree_choice == 2 ? 0 : 1
     e_0 = e == 1 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
-    m_single = m == 0 ? 1 : 0
+    m_single = m == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0   # both_low
     f_2 = t == 2 ? 1 : 0   # both_mid
 
@@ -170,7 +171,7 @@ function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
-
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
     if r == 2 
         val = β_black_probit_out[1] + β_black_probit_out[2]*log(y) + β_black_probit_out[3]*log(a_income +1 ) + β_black_probit_out[4]*age +  
         β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_2 + β_black_probit_out[9]*m + 
@@ -190,6 +191,7 @@ function transfers_out_amount(r,n,m, j, y, a_income, e, t)
     e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_transfer_out[1] + β_black_transfer_out[2]*log(y) + β_black_transfer_out[3]*log(a_income +1 ) + β_black_transfer_out[4]*age + 
@@ -210,6 +212,7 @@ function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
     e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income) + β_black_probit_in[4]*age +  
@@ -230,6 +233,7 @@ function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_transfer_in[1] + β_black_transfer_in[2]*log(y) + β_black_transfer_in[3]*log(a_income +1 ) + β_black_transfer_in[4]*age + 
@@ -291,7 +295,7 @@ function compute_natural_borrowing_limit(model, R, e, m, degree_choice)
     for j in (jpnts-1):-1:1
         if j >= j_grad
             # Working: minimum income at this age
-            y_min = g(R, j, e, m) * z_min
+            y_min = g(R, j, degree_choice, m) * z_min
             # Natural limit: PV of (min_income - c_floor) plus next period's limit
             d_limit[j] = (y_min - c_floor + d_limit[j+1]) / (1 + r_loan)
         else

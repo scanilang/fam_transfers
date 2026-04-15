@@ -87,7 +87,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             resources = a * (1 + r_loan) - tuition/e
         end
 
-        borrow_floor = -d_limit[j, R, degree]
+        borrow_floor = -d_limit[j, R, 1, degree]
         ub = resources - 0.001
         lb = max(borrow_floor, ub - 1e6)
         
@@ -140,7 +140,7 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
     end
 
     # Lower bound: natural borrowing limit
-    lb = -d_limit[j, R, e]
+    lb = -d_limit[j, R, m, e]
 
     @threads for idx in eachindex(tasks_idx_c)
         (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
@@ -154,7 +154,7 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, m, n,t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
@@ -255,7 +255,7 @@ function EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[R, m_next, n_next, e, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[R, m_next, n_next, t_next, e, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
     
             end
         end
@@ -289,7 +289,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, m, n, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value

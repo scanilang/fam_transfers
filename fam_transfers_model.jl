@@ -68,8 +68,8 @@ function model_create(;
     # Borrowing limit
     d_limit = zeros(jpnts, length(Race), length(ed_type), length(marital_status), 2)  
 
-    for R in Race, e in ed_type, m in marital_status, dc in 1:2
-        d_limit[:, R, e, m, dc] = compute_natural_borrowing_limit(model, R, e, m, dc)
+    for R in Race, m in marital_status, dc in 1:2
+        d_limit[:, R, m, dc] = compute_natural_borrowing_limit(model, R, m, dc)
     end
 
     max_debt = maximum(d_limit)  # largest possible debt across all types
@@ -91,9 +91,9 @@ function model_create(;
     end
 
     # No-college precomputation (e=1, positive assets only)
-    shock_resources_nc = zeros(Float64, working_years, 2, 2, 6, 4, apnts_nc, zpnts, 2, 2, 2, 2)
-    net_transfers_nc   = zeros(Float64, working_years, 2, 2, 6, 4, apnts_nc, zpnts, 2, 2, 2, 2)
-    prob_shocks_nc     = zeros(Float64, working_years, 2, 2, 6, 4, apnts_nc, zpnts, 2, 2, 2, 2)
+    shock_resources_nc = zeros(Float64, working_years, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
+    net_transfers_nc   = zeros(Float64, working_years, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
+    prob_shocks_nc     = zeros(Float64, working_years, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
     # dimensions: (j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out)
 
     for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type
@@ -103,7 +103,7 @@ function model_create(;
             a_next   = R == 1 ? a * (1 + ra_w * (1 - tax_a)) : a * (1 + ra_b * (1 - tax_a))
 
             for i_z in 1:zpnts
-                y = y_values[R, j, m, 0, i_z]
+                y = y_values[R, j, m, 1, i_z]
                 y_tax = j < working_years ? tax_y(y, m) : 0.0
 
                 for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
@@ -130,14 +130,14 @@ function model_create(;
     end
 
     # College precomputation (e ∈ {2,3}, allows negative assets)
-    shock_resources_c = zeros(Float64, working_years, 2, 2, 6, 4, 2, apnts_c, zpnts, 2, 2, 2, 2)
-    net_transfers_c   = zeros(Float64, working_years, 2, 2, 6, 4, 2, apnts_c, zpnts, 2, 2, 2, 2)
-    prob_shocks_c     = zeros(Float64, working_years, 2, 2, 6, 4, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    shock_resources_c = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    net_transfers_c   = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    prob_shocks_c     = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     # dimensions: (j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out)
     # e_idx: 1 = 2yr (e=2), 2 = 4yr (e=4)
 
-    for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type, e in [2, 4]
-        e_idx = e - 1  # maps e=2→1, e=4→2
+    for j in 1:working_years, R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3
+        e_idx = e - 1
         for i_a in 1:apnts_c
             a = a_grid_college[i_a]
             if a >= 0

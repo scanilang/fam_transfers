@@ -38,7 +38,7 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
 
             if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVnc_family_jp1(model, vnc_itp, j, R, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
 
             elseif j < working_years
@@ -47,7 +47,7 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EWnc_jp1(model, wncjp1_itp, j, R, m, m, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EWnc_jp1(model, wncjp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
@@ -101,12 +101,12 @@ function EVnc_jp1(model, vjp1, j, R, m, n, ap1, i_z, shock_in, shock_out, past_i
 end
 
 # Expected value with family transition
-function EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVnc_family_jp1(model, vnc_itp, j, R,  ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
-    outcomes = family_shock_probs[(R, e_college(e))]
+    outcomes = family_shock_probs[(R, e_college(1))]
 
     expected_value = 0.0
     for (m_next, n_next, t_next, prob_fam) in outcomes
@@ -173,7 +173,7 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
                 Wj_nc[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
                 WPFj_nc[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWnc_jp1(model, wncjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWnc_jp1(model, wncjp1_itp, j, R, m, n,  t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             0.0, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_nc[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_nc[R, m, n, t, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
@@ -184,7 +184,7 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
     return Wj_nc, WPFj_nc
 end
 
-function EWnc_jp1(model, wncjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EWnc_jp1(model, wncjp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
 
     (; y_values) = model
     jp1 = j + 1
