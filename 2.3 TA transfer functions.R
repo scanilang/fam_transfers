@@ -26,8 +26,7 @@ black_probit_student_support = glm(Living_Support_Indicator ~ log_nonasset_incom
                        data = tas_school_transfers %>% filter(Race_Head == "Black"))
 summary(black_probit_student_support)
 
-student_support_probit = glm(Living_Support_Indicator ~ log_nonasset_income + log_asset_income + Family_Unit_Size + Head_College +
-                               Marital_Status_Parents + Race_Head,
+student_support_probit = glm(Living_Support_Indicator ~ log_nonasset_income + log_asset_income  + Head_College + Race_Head,
                              family = binomial(link = "probit"), 
                              data = tas_school_transfers)
 summary(student_support_probit)

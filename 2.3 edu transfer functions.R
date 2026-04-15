@@ -70,7 +70,7 @@ summary(pooled_probit_edu)
 
 pooled_transfer_edu <- lm(
   log_educ_exp ~ log_nonasset_income + log_asset_income +
-    Head_College + degree_type_final + enroll_era + 
+    Head_College + family_type + degree_type_final + enroll_era + 
     Race_Head,
   data = psid_edu %>% filter(Help_School_Indicator == 1,
                              degree_type_final %in% c("2yr", "4yr"),

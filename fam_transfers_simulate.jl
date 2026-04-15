@@ -1,5 +1,5 @@
 
-function education_decision(model, Vsj_1, vjp1, R, m, t, e, i_a)
+function education_decision(model, Vsj_1, vjp1, R, m, n, t, e, i_a, i_z)
     (; a_grid_nocollege, y_values) = model
     y = y_values[R, 43, m, e, i_z]
     a_income = R == 1 ? a_grid_nocollege[i_a] * ra_w : a_grid_nocollege[i_a] * ra_b
@@ -9,21 +9,39 @@ function education_decision(model, Vsj_1, vjp1, R, m, t, e, i_a)
     v_nocollege = EVnc_jp1(model, vjp1, 0, R, 0, 1, a_grid_nocollege[i_a], i_z, 1, 1, 1, 1)
 
     # 2yr: integrate over education transfer shock
-    prob_help_2yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 2)  # degree_choice=2
+    prob_help_2yr = edu_transfer_prob(R, m,n, y, a_income, e, t, 2)  # degree_choice=2
     v_2yr = prob_help_2yr       * Vsj_1[R, m, e, i_a, i_z, 2, 1] +  # help
             (1 - prob_help_2yr) * Vsj_1[R, m, e, i_a, i_z, 1, 1]     # no help
 
     # 4yr: integrate over education transfer shock
-    prob_help_4yr = edu_transfer_prob(R, n, m, y, a_income, e, t, 4)  # degree_choice=4
+    prob_help_4yr = edu_transfer_prob(R, m,n, y, a_income, e, t, 4)  # degree_choice=4
     v_4yr = prob_help_4yr       * Vsj_1[R, m, e, i_a, i_z, 2, 2] +  # help
             (1 - prob_help_4yr) * Vsj_1[R, m, e, i_a, i_z, 1, 2]     # no help
 
     return argmax((v_nocollege, v_2yr, v_4yr))
 end
 
-function family_shock()
+function family_shock(model, R, e, t_parent, rng)
+    # t_parent: parental family type (1=both_low, 2=both_mid, 3=both_high, 4=single)
+    # Returns: (m_next, n_next, t_next) for the agent at age 25
+    
+    (; fam_transition_matrix) = model
+    # fam_transition_matrix[R, e, t_parent] is a vector of probabilities over 
+    # all valid (m, n, t) combinations
 
-    return m, n, t
+    outcomes = [(m, n, t) for m in 1:2, n in 1:6, t in 1:4
+                if !(m == 1 && n > 1) && !(m == 2 && n < 1)]
+    
+    probs = fam_transition_matrix[R, e, t_parent]  # length = number of valid outcomes
+    u = rand(rng)
+    cumprob = 0.0
+    for (i, p) in enumerate(probs)
+        cumprob += p
+        if u <= cumprob
+            return outcomes[i]
+        end
+    end
+    return outcomes[end]  # fallback
 end
 
 function famtransfer_simulate(model, n_agents, random_seed)

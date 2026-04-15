@@ -106,13 +106,10 @@ function EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_o
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
-    expected_value = 0.0
-    for n_next in 1:6, t_next in fam_type, m_next in marital_status
-        if n_next == 1 && m_next == 2 || n_next > 1 && m_next == 1
-            continue
-        end
+    outcomes = family_shock_probs[(R, e_college(e))]
 
-        prob_family_transition = family_transition_prob(n, t, m, n_next, t_next, m_next)
+    expected_value = 0.0
+    for (m_next, n_next, t_next, prob_fam) in outcomes
 
         for i_zp1 in 1:zpnts
             pi_z =Pimat[i_z, i_zp1]
@@ -138,7 +135,7 @@ function EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_o
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_family_transition * pi_z * shock_out_next_prob *  shock_in_next_prob* vnc_itp[R, m_next, n_next, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vnc_itp[R, m_next, n_next, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
        
             end
         end

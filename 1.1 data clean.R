@@ -69,30 +69,56 @@ psid_clean = psid_ind %>%
          Mother_Education_Spouse = if_else(Mother_Education_Spouse %in% c(9,99), NA, Mother_Education_Spouse),
          parent_educ_head = pmax(Father_Education_Head,  Mother_Education_Head, na.rm = TRUE),
          parent_educ_spouse = pmax(Father_Education_Spouse, Mother_Education_Spouse, na.rm = TRUE),
-         # less than college, some college or nonacademic training, college or more
-         head_side = case_when( 
-           Parents_Poor_Head == 1 | parent_educ_head %in% 1:4 ~ "low",
-           parent_educ_head %in% 5:6                                 ~ "mid",
-           parent_educ_head >= 7                                  ~ "high",
-           TRUE ~ NA_character_),
+         Parents_Poor_Head = if_else(Parents_Poor_Head %in% c(0, 8,9), NA, Parents_Poor_Head)) %>% 
+  arrange(ER30001, ER30002, Survey_Year) %>%
+  group_by(ER30001, ER30002) %>%
+  tidyr::fill(Father_Education_Head, 
+              Mother_Education_Head,
+              Father_Education_Spouse, 
+              Mother_Education_Spouse,
+              Parents_Poor_Head,
+              .direction = "downup") %>%
+  ungroup() %>%
+  mutate(# less than college, some college or nonacademic training, college or more
+         head_side = case_when(
+           # Primary: use Parents_Poor_Head when available (96% coverage)
+           Parents_Poor_Head == 1 ~ "low",           # Poor
+           Parents_Poor_Head == 3 ~ "mid",           # Average; "it varied"  
+           Parents_Poor_Head == 5 ~ "high",          # Pretty well off
+           
+           # Fallback: use parental education when Parents_Poor_Head is NA
+           parent_educ_head %in% 1:4 ~ "low",
+           parent_educ_head %in% 5:6 ~ "mid",
+           parent_educ_head >= 7     ~ "high",
+           
+           TRUE ~ NA_character_
+         ),
          spouse_side = case_when(
            parent_educ_spouse %in% 1:4 ~ "low",
            parent_educ_spouse %in% 5:6       ~ "mid",
            parent_educ_spouse >= 7      ~ "high",
            TRUE ~ NA_character_),
+         # family_type = case_when(
+         #   # married households — both sides observable
+         #   head_side == "high" & spouse_side == "high"                         ~ "both_high",
+         #   (head_side == "high" & spouse_side %in% c("low", "mid")) |
+         #     (head_side %in% c("low", "mid") & spouse_side == "high")          ~ "mixed",
+         #   head_side == "mid"  & spouse_side == "mid"                          ~ "both_mid",
+         #   head_side == "low"  & spouse_side == "low"                          ~ "both_low",
+         #   head_side == "mid"  & spouse_side == "low"                          ~ "both_low",
+         #   head_side == "low"  & spouse_side == "mid"                          ~ "both_low",
+         #   
+         #   # single households — spouse_side is NA, use head side only
+         #   is.na(spouse_side) & head_side == "high"                            ~ "mixed",
+         #   is.na(spouse_side) & head_side == "mid"                             ~ "both_mid",
+         #   is.na(spouse_side) & head_side == "low"                             ~ "both_low",
+         #   TRUE ~ NA_character_ ),
          family_type = case_when(
-           # married households — both sides observable
-           head_side == "high" & spouse_side == "high"                         ~ "both_high",
-           (head_side == "high" & spouse_side %in% c("low", "mid")) |
-             (head_side %in% c("low", "mid") & spouse_side == "high")          ~ "mixed",
-           head_side == "mid"  & spouse_side == "mid"                          ~ "both_mid",
-           head_side == "low"  & spouse_side == "low"                          ~ "both_low",
-           
-           # single households — spouse_side is NA, use head side only
-           is.na(spouse_side) & head_side == "high"                            ~ "mixed",
-           is.na(spouse_side) & head_side == "mid"                             ~ "both_mid",
-           is.na(spouse_side) & head_side == "low"                             ~ "both_low",
-           TRUE ~ NA_character_ ),
+           head_side == "low"  ~ "low",
+           head_side == "mid"  ~ "mid",
+           head_side == "high" ~ "high",
+           TRUE ~ NA_character_
+         ),
          # Receive Support Variables
          (across(c(Received_Family_Reported_Head,Received_Family_Reported_Spouse,
                    Received_ChildSupport_Reported_Head, Received_ChildSupport_Reported_Spouse,

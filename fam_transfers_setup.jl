@@ -89,7 +89,7 @@ end
 β_edu_probit = Tuple(edu_transfer_probit.pooled_probit_edu)
 β_edu_amount = Tuple(edu_transfer_amount.pooled_transfer_edu)
 
-function edu_transfer_prob(R, n, m, y, a_income, e, t, degree_choice)
+function edu_transfer_prob(R, m, n, y, a_income, e, t, degree_choice)
     race_white = R == 1 ? 1 : 0
     is_4yr     = degree_choice == 2 ? 0 : 1
     e_0 = e == 0 ? 1 : 0   # No College
@@ -308,4 +308,24 @@ function compute_natural_borrowing_limit(model, R, e, m, degree_choice)
     end
     
     return d_limit
+end
+
+###############################################################################################
+# Family Shock Proabilities
+###############################################################################################
+# Load shock table
+fam_shock_df = CSV.read("data/family_shock_table.csv", DataFrame)
+
+# Build lookup: (R, e_college) -> vector of (m, n, t_idx, prob)
+t_map = Dict("low" => 1, "mid" => 2, "high" => 3)
+
+# e_college: collapse to 0 vs 1 to match shock table
+e_college(e) = e < 4 ? 0 : 1
+
+family_shock_probs = Dict{Tuple{Int,Int}, Vector{Tuple{Int,Int,Int,Float64}}}()
+
+for row in eachrow(fam_shock_df)
+    key = (row.R, row.e)
+    outcome = (row.m, row.n, t_map[row.t], Float64(row.prob))
+    push!(get!(family_shock_probs, key, Tuple{Int,Int,Int,Float64}[]), outcome)
 end

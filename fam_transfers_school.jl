@@ -95,7 +95,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             Vsj[R, t, e, i_a] = -1e10
             PFsj[R, t, e, i_a] = lb
         else
-            if j == 2 & e == 2 || j == 4 & e == 4
+            if j == 2 && e == 2 || j == 4 && e == 4
                result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
                          beta * EVc_jp1(model, vjp1, j, R, 1, 1, t, e,ap1, 0, 1, 1, 1, 1)),
@@ -226,13 +226,10 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, sho
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
-    expected_value = 0.0
-    for n_next in 1:6, t_next in fam_type, m_next in marital_status
-        if n_next == 1 && m_next == 2 || n_next > 1 && m_next == 1
-            continue
-        end
+    outcomes = family_shock_probs[(R, e_college(e))]
 
-        prob_family_transition = family_transition_prob(n, t, m, n_next, t_next, m_next)
+    expected_value = 0.0
+    for (m_next, n_next, t_next, prob_fam) in outcomes
 
         for i_zp1 in 1:zpnts
             pi_z =Pimat[i_z, i_zp1]
@@ -244,8 +241,8 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, sho
                 end
 
                 # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
-                shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in, past_out)
+                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in, past_out)
                 if shock_in_next == 2
                     shock_in_next_prob = shock_in_prob
                 else
@@ -258,7 +255,7 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, sho
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_family_transition * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
     
             end
         end
