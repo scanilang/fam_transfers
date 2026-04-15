@@ -42,7 +42,7 @@ end
 function g( r,j,e, m)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
+    e_0 = e == 1 ? 1 : 0
 
     if r == 2
         g = β_black_income[1] + β_black_income[2]*age + β_black_income[3]*age^2 + β_black_income[4]*age^3 + β_black_income[5]*e_0 + β_black_income[6]*e_2 + β_black_income[7]*m + β_black_income[26]
@@ -92,7 +92,7 @@ end
 function edu_transfer_prob(R, m, n, y, a_income, e, t, degree_choice)
     race_white = R == 1 ? 1 : 0
     is_4yr     = degree_choice == 2 ? 0 : 1
-    e_0 = e == 0 ? 1 : 0   # No College
+    e_0 = e == 1 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
     m_single = m == 0 ? 1 : 0
     f_1 = t == 1 ? 1 : 0   # both_low
@@ -123,7 +123,7 @@ end
 function edu_transfer(R, y, a_income, e, degree_choice)
     race_white = R == 1 ? 1 : 0
     is_4yr     = degree_choice == 2 ? 0 : 1
-    e_0 = e == 0 ? 1 : 0   # No College
+    e_0 = e == 1 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
 
     val = β_edu_amount[1] +                    # intercept
@@ -167,7 +167,7 @@ end
 function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
+    e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
 
@@ -187,7 +187,7 @@ end
 function transfers_out_amount(r,n,m, j, y, a_income, e, t)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
+    e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
 
@@ -207,7 +207,7 @@ end
 function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
+    e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
 
@@ -227,7 +227,7 @@ end
 function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
-    e_0 = e == 0 ? 1 : 0
+    e_0 = e == 1 ? 1 : 0
     f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
 

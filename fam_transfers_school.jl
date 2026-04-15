@@ -158,7 +158,7 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
 
             if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
 
             elseif j < working_years
@@ -221,19 +221,19 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
 end
 
 # Expected value with family transition
-function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     outcomes = family_shock_probs[(R, e_college(e))]
-
+    e_idx = e == 2 ? 1 : 2
     expected_value = 0.0
     for (m_next, n_next, t_next, prob_fam) in outcomes
 
         for i_zp1 in 1:zpnts
             pi_z =Pimat[i_z, i_zp1]
-            y = y_values[R, j, m, t, e, i_z]
+            y = y_values[R, jp1, m_next, e_idx, i_z]
             for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
                 # update past in and past out flags based on past flags and past shocks
                 if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 || past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1
@@ -255,7 +255,7 @@ function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, sho
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[R, m_next, n_next, e, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
     
             end
         end
