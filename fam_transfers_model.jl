@@ -33,7 +33,6 @@ function model_create(;
 
     family_shock_probs = family_shock_probs
 
-
     )
     
     # 2 year interest rates
