@@ -24,7 +24,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 
             degree_choice  = [2, 4][degree]
             tuition = degree_choice == 2 ? tuition_2yr/2 : tuition_4yr/4
-
+``
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
                 a_income = a* r
@@ -71,7 +71,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
         vjp1_itp = nothing
     else
         vjp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
     @threads for idx in eachindex(tasks_idx_c)
@@ -87,13 +87,13 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             resources = a * (1 + r_loan) - tuition/e
         end
 
-        borrow_floor = -d_limit[j, R, e]
+        borrow_floor = -d_limit[j, R, e-1]
         ub = resources - 0.001
         lb = max(borrow_floor, ub - 1e6)
         
         if ub <= lb
-            Vsj[R, t, e, i_a] = -1e10
-            PFsj[R, t, e, i_a] = lb
+            Vsj[R, t, e-1, i_a] = -1e10
+            PFsj[R, t, e-1, i_a] = lb
         else
             if j == 2 && e == 1 || j == 4 && e == 2
                result = optimize(
@@ -107,8 +107,8 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
             
-            Vsj[R, t, e, i_a] = -result.minimum
-            PFsj[R, t, e, i_a] = result.minimizer
+            Vsj[R, t, e-1, i_a] = -result.minimum
+            PFsj[R, t, e-1, i_a] = result.minimizer
         end
     end
     return Vsj, PFsj
@@ -130,27 +130,29 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
 
     # When creating interpolation objects for Vj+1:
     vc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
     if j < working_years
         wc_itp = nothing
     else
         wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
-    # Lower bound: natural borrowing limit
-    lb = -d_limit[j, R, m, e]
+
 
     @threads for idx in eachindex(tasks_idx_c)
         (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
 
-        vcjp1_itp = vc_itp[R, m, n, t, e, :, :, :, :]
+        vcjp1_itp = vc_itp[R, m, n, t, e-1, :, :, :, :]
         if j < working_years
             wcjp1_itp = nothing
         else    
-            wcjp1_itp = wc_itp[R, m, n, t, e, :, :, :, :]
+            wcjp1_itp = wc_itp[R, m, n, t, e-1, :, :, :, :]
         end
+
+        # Lower bound: natural borrowing limit
+        lb = -d_limit[j, R, e-1]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
@@ -171,8 +173,8 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
                      lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
-            Vj_c[R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-            PFj_c[R, m, n, t, e, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+            Vj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+            PFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
         end
     end
     
@@ -277,15 +279,16 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
     # Create interpolation object
     wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,   :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
-                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
-    # Lower bound: natural borrowing limit
-    lb = -d_limit[j, R, e]
 
     @threads for idx in eachindex(tasks_idx_c)
         (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
         sj = survival_risk[j, R]
-        wcjp1_itp = wc_itp[R, m, n, t,e, :, :, :, :]
+        wcjp1_itp = wc_itp[R, m, n, t,e-1, :, :, :, :]
+        
+        # Lower bound: natural borrowing limit
+        lb = -d_limit[j, R, e-1]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 

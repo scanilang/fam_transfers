@@ -35,7 +35,7 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_nc[j, R, m, n,t, 1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_nc[j, R, m, n,t, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
@@ -163,11 +163,11 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
     @threads for idx in eachindex(tasks_idx_nc)
         (R, m, n, t, i_a, i_z) = tasks_idx_nc[idx]
         sj = survival_risk[j, R]
-        wncjp1_itp = wnc_itp[R, m, n, t, :, :, :, :, :]
+        wncjp1_itp = wnc_itp[R, m, n, t, :, :, :, :]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_nc[j, R, m, n, 1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_nc[j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value

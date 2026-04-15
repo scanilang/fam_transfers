@@ -91,3 +91,7 @@ edu_transfer_amount_results = data.frame(pooled_transfer_edu = pooled_transfer_e
 write.csv(edu_transfer_probit_results, "../data/edu_transfer_probit_results.csv")
 write.csv(edu_transfer_amount_results, "../data/edu_transfer_amount_results.csv")
 
+#################################################################################################################################
+# Graphs
+#################################################################################################################################
+
