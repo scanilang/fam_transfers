@@ -7,7 +7,7 @@
 ###############################################################################################
 
 function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
-    (; beta, gamma,a_grid_nocollege, tasks_idx_nc, shock_resources_nc) = model
+    (; beta, gamma,a_grid_nocollege, tasks_idx_nc, shock_resources_nc, fam_shock_period) = model
 
     fill!(Vj_nc, 0f0)
     fill!(PFj_nc, 0f0)
@@ -36,7 +36,7 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
 
             net_resources = shock_resources_nc[j, R, m, n,t, 1, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
-            if j == fam_shock_age
+            if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EVnc_family_jp1(model, vnc_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)

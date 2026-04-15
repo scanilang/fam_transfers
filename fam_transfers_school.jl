@@ -28,7 +28,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
                 a_income = a* r
-                y = y_values[R, 60, m, e, i_z]
+                y = y_values[R, 43, m, e, i_z] # Parents age when child is 18
                 edu_transfer  = edu_transfer_amount(R, n, m, e, y, a_income, e, t, degree_choice)
             else
                 edu_transfer = 0.0
@@ -84,7 +84,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
         if a >= 0
             resources = a * (1 + r) - tuition/e
         else
-            resources = a * (1 + r_loan) - tuition
+            resources = a * (1 + r_loan) - tuition/e
         end
 
         borrow_floor = -d_limit[j, R, degree]
@@ -123,7 +123,7 @@ end
 ###############################################################################################
 
 function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit) = model
+    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period) = model
 
     fill!(Vj_c, 0f0)
     fill!(PFj_c, 0f0)
@@ -156,18 +156,18 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
 
             net_resources = shock_resources_c[j, R, m, n,t, e, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
-            if j == fam_shock_age
+            if j == fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_family_jp1(model, vc_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
 
             elseif j < working_years
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, t,e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
@@ -221,7 +221,7 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
 end
 
 # Expected value with family transition
-function EVc_family_jp1(model, vc_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVc_family_jp1(model, vc_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
@@ -299,7 +299,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
                 Wj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
                 WPFj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             lb, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_c[R, m, n, t, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
@@ -310,7 +310,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
     return Wj_c, WPFj_c
 end
 
-function EWc_jp1(model, wcjp1_itp, j, R, m, n, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e,ap1, i_z, shock_in, shock_out, past_in, past_out)
 
     (; y_values) = model
     jp1 = j + 1

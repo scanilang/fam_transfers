@@ -15,6 +15,7 @@ function model_create(;
     ed_type = [1, 2, 3],
     jpnts = 85 - 18,
     working_years = 60 - 18,
+    fam_shock_period = 25 - 18, # age 25 shock, happens in period 7
 
     # Income variables
     zpnts = 7,  # Number of income grid points
@@ -173,5 +174,5 @@ function model_create(;
     end
 
 
-    return (; r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx_nc, tasks_idx_c1, tasks_idx_c, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
+    return (; fam_shock_period, r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx_nc, tasks_idx_c1, tasks_idx_c, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
 end
