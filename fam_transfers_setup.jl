@@ -306,7 +306,7 @@ fam_shock_df = CSV.read("data/family_shock_table.csv", DataFrame)
 t_map = Dict("low" => 1, "mid" => 2, "high" => 3)
 
 # e_college: collapse to 0 vs 1 to match shock table
-e_college(e) = e < 4 ? 0 : 1
+e_college(e) = e < 3 ? 0 : 1
 
 family_shock_probs = Dict{Tuple{Int,Int}, Vector{Tuple{Int,Int,Int,Float64}}}()
 
