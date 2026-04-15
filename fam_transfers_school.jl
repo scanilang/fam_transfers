@@ -23,7 +23,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
         for edu_help in 1:2, degree in 1:2
 
             degree_choice  = [2, 4][degree]
-            tuition = degree_choice == 2 ? tuition_2yr : tuition_4yr
+            tuition = degree_choice == 2 ? tuition_2yr/2 : tuition_4yr/4
 
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
@@ -34,15 +34,15 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
                 edu_transfer = 0.0
             end
             
-            resources = a * (1 + r) + edu_transfer - tuition/degree_choice 
+            resources = a * (1 + r) + edu_transfer - tuition 
             
             borrow_floor = -d_limit[1, R, degree]
             ub = resources
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vsj_1[R, m, e, i_a, i_z] = -1e10
-                PFsj_1[R, m, e, i_a, i_z] = lb
+                Vsj_1[R, m, e, i_a, i_z, edu_help, degree] = -1e10
+                PFsj_1[R, m, e, i_a, i_z, edu_help, degree] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
