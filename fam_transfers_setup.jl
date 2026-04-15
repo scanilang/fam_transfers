@@ -279,32 +279,20 @@ survival_risk_full = survival_risk_full[:, 2:3]
 # Natural Borrowing Limit
 ###############################################################################################
 
-function compute_natural_borrowing_limit(model, R, e, m, degree_choice)
-    (; z_grid, r_loan, gamma, jpnts) = model
-    
-    z_min = z_grid[R][1]  # worst productivity realization
-    c_floor = 0.001       # minimum consumption (numerical floor)
-    
-    # Graduation age (j index, where j=1 is age 18)
-    j_grad = degree_choice == 1 ? 3 : 5  # 2yr: graduate at j=3 (age 20), 4yr: j=5 (age 22)
-    
-    # Work backward from last working period
-    # At terminal period: can't die in debt
+function compute_natural_borrowing_limit(z_grid, r_loan, jpnts, R, e)
+    z_min   = z_grid[R][1]
+    c_floor = 0.001
+    j_grad  = e == 2 ? 3 : 5    # 2yr graduates j=3, 4yr graduates j=5
+
     d_limit = zeros(jpnts)
-    
-    for j in (jpnts-1):-1:1
+    for j in (jpnts - 1):-1:1
         if j >= j_grad
-            # Working: minimum income at this age
-            y_min = g(R, j, degree_choice, m) * z_min
-            # Natural limit: PV of (min_income - c_floor) plus next period's limit
-            d_limit[j] = (y_min - c_floor + d_limit[j+1]) / (1 + r_loan)
+            y_min      = g(R, j, e, 1) * z_min   # worst case: single (m=1), min z
+            d_limit[j] = (y_min - c_floor + d_limit[j + 1]) / (1 + r_loan)
         else
-            # In school: no labor income (or reduced)
-            y_school = 0.0  # or part-time work if you allow it
-            d_limit[j] = (y_school - c_floor + d_limit[j+1]) / (1 + r_loan)
+            d_limit[j] = (-c_floor + d_limit[j + 1]) / (1 + r_loan)
         end
     end
-    
     return d_limit
 end
 

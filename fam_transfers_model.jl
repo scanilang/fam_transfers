@@ -61,17 +61,17 @@ function model_create(;
     end
 
     tasks_idx_c = Vector{NTuple{6, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, i_a in 1:apnts, i_z in 1:zpnts
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3, i_a in 1:apnts, i_z in 1:zpnts
         push!(tasks_idx_c, (R, m, n, t, e, i_a, i_z))
     end
 
     # Borrowing limit
-    d_limit = zeros(jpnts, length(Race), length(ed_type), length(marital_status), 2)  
+    d_limit = zeros(jpnts, 2, 2)
 
-    for R in Race, m in marital_status, dc in 1:2
-        d_limit[:, R, m, dc] = compute_natural_borrowing_limit(model, R, m, dc)
+    for R in Race, e in [2, 3]
+        e_idx = e - 1
+        d_limit[:, R, e_idx] = compute_natural_borrowing_limit(z_grid, r_loan, jpnts, R, e)
     end
-
     max_debt = maximum(d_limit)  # largest possible debt across all types
     d_points = [-max_debt, -max_debt*0.75, -max_debt*0.5, -max_debt*0.25, -5000.0, -1000.0, 0.0]
     school_a_grid = [d_points; a_grid[2:end]]
@@ -81,15 +81,14 @@ function model_create(;
     apnts_c  = length(a_grid_college)
 
     # Precompute y_values (shared — doesn't depend on assets)
-    y_values = zeros(Float64, 2, working_years, 2, 3, zpnts)  # (R, j, m, e, i_z)
-    for R in Race, j in 1:working_years, m in marital_status, e in ed_type, i_z in 1:zpnts
-        if j < working_years
+    y_values = zeros(Float64, 2, jpnts, 2, 3, zpnts)
+    for R in Race, j in 1:jpnts, m in marital_status, e in ed_type, i_z in 1:zpnts
+        if j <= working_years
             y_values[R, j, m, e, i_z] = g(R, j, e, m) * z_grid[R][i_z]
         else
             y_values[R, j, m, e, i_z] = g(R, working_years, e, m) * z_grid[R][i_z] * 0.4
         end
     end
-
     # Precomputation for no-college and college paths
     # Extended to jpnts to cover retirement (j > working_years has zero transfers)
     shock_resources_nc = zeros(Float64, jpnts, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)

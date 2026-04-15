@@ -19,8 +19,9 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
     if j < working_years
         wnc_itp = nothing
     else
-        wnc_itp = LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t, :, :, :, :], extrapolation_bc=Flat())
-    end
+        wnc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+               for R in Race, m in marital_status, n in fam_size, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+      end
 
     @threads for idx in eachindex(tasks_idx_nc)
         (R, m, n, t, i_a, i_z) = tasks_idx_nc[idx]
@@ -29,7 +30,7 @@ function Vncj_solve(vncjp1, wncjp1, Vj_nc, PFj_nc, model, j)
         if j < working_years
             wncjp1_itp = nothing
         else    
-            wncjp1_itp = wnc_itp[R, m, m, t, :, :, :, :]
+            wncjp1_itp = wnc_itp[R, m, n, t, :, :, :, :]
         end
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2

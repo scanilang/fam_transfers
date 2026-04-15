@@ -87,7 +87,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             resources = a * (1 + r_loan) - tuition/e
         end
 
-        borrow_floor = -d_limit[j, R, 1, degree]
+        borrow_floor = -d_limit[j, R, e]
         ub = resources - 0.001
         lb = max(borrow_floor, ub - 1e6)
         
@@ -95,7 +95,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             Vsj[R, t, e, i_a] = -1e10
             PFsj[R, t, e, i_a] = lb
         else
-            if j == 2 && e == 2 || j == 4 && e == 4
+            if j == 2 && e == 1 || j == 4 && e == 2
                result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
                          beta * EVc_jp1(model, vjp1, j, R, 1, 1, t, e,ap1, 0, 1, 1, 1, 1)),
@@ -103,7 +103,7 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             else 
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * vsjp1_itp[R, t, degree](ap1)),
+                         beta * vsjp1_itp[R, t, e](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
             
@@ -276,8 +276,8 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
     fill!(WPFj_c, 0f0)
 
     # Create interpolation object
-    wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, e,  t,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
-                for R in Race, m in marital_status, n in fam_size, e in ed_type, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,   :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
     # Lower bound: natural borrowing limit
     lb = -d_limit[j, R, e]
@@ -285,7 +285,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
     @threads for idx in eachindex(tasks_idx_c)
         (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
         sj = survival_risk[j, R]
-        wcjp1_itp = wc_itp[R, m, n, e, t, :, :, :, :, :]
+        wcjp1_itp = wc_itp[R, m, n, t,e, :, :, :, :]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
