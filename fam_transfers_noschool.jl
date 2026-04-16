@@ -69,7 +69,7 @@ function EVnc_jp1(model, vjp1, j, R, m, n, ap1, i_z, shock_in, shock_out, past_i
     expected_value = 0.0
     for i_zp1 in 1:zpnts
         pi_z =Pimat[i_z, i_zp1]
-        y = y_values[R, j, m, 1, i_z]
+        y = y_values[R, jp1, m, 1, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
             if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 
@@ -80,8 +80,8 @@ function EVnc_jp1(model, vjp1, j, R, m, n, ap1, i_z, shock_in, shock_out, past_i
             end
 
             # probability of shock in and shock out next period
-            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
-            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in-1, past_out-1)
+            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in-1, past_out-1)
             if shock_in_next == 2
                 shock_in_next_prob = shock_in_prob
             else
@@ -122,8 +122,8 @@ function EVnc_family_jp1(model, vnc_itp, j, R,  ap1, i_z, shock_in, shock_out, p
                 end
 
                 # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
-                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in, past_out)
+                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in-1, past_out-1)
+                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, 1, t_next, past_in-1, past_out-1)
                 if shock_in_next == 2
                     shock_in_next_prob = shock_in_prob
                 else
@@ -200,8 +200,8 @@ function EWnc_jp1(model, wncjp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_ou
         end
 
         # probability of shock in and shock out next period
-        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
-        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in, past_out)
+        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, 1, t, past_in-1, past_out-1  )
+        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, 1, t, past_in-1, past_out-1)
         
         if shock_in_next == 2
             shock_in_next_prob = shock_in_prob

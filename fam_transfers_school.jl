@@ -143,8 +143,8 @@ function EV_graduation(model, vjp1_itp, R, t, degree, ap1)
         y = y_values[R, j_grad_work, m, degree, i_z]
         
         # Integrate over first-period transfer shocks
-        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in, past_out)
-        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in, past_out)
+        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in-1, past_out-1   )
+        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in-1, past_out-1)
         
         for shock_in in 1:2, shock_out in 1:2
             p_in  = shock_in  == 2 ? prob_in  : 1 - prob_in
@@ -205,11 +205,11 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
 
             elseif j < working_years
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
@@ -241,8 +241,8 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
             end
 
             # probability of shock in and shock out next period
-            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
-            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+            shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in-1, past_out-1)
+            shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in-1, past_out-1)
             if shock_in_next == 2
                 shock_in_next_prob = shock_in_prob
             else
@@ -283,8 +283,8 @@ function EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
                 end
 
                 # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in, past_out)
-                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in, past_out)
+                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in -1, past_out-1)
+                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in-1, past_out-1)
                 if shock_in_next == 2
                     shock_in_next_prob = shock_in_prob
                 else
@@ -332,17 +332,17 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value
-                Wj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
-                WPFj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
+                Wj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
+                WPFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
                 result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             lb, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
-                Wj_c[R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-                WPFj_c[R, m, n, t, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
+                Wj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+                WPFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
             end
         end
     end
@@ -365,8 +365,8 @@ function EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e,ap1, i_z, shock_in, shock_ou
         end
         
         # probability of shock in and shock out next period
-        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
-        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in, past_out)
+        shock_out_prob= shocks_out_prob(R,n,m,jp1,y, a_income, e, t, past_in-1, past_out-1)
+        shock_in_prob = shocks_in_prob(R,n,m,jp1,y, a_income, e, t, past_in-1, past_out-1)
         if shock_in_next == 2
             shock_in_next_prob = shock_in_prob
         else

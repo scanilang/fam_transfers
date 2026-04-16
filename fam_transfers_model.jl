@@ -6,6 +6,10 @@ function model_create(;
     ra_w = 6.09,
     ra_b = 2.91,
 
+    tuition_2yr = 5000.0,
+    tuition_4yr = 15000.0,
+    r_loan = 0.06,
+
     survival_risk = survival_risk_full,
 
     # Demographic variables
@@ -51,17 +55,17 @@ function model_create(;
 
     # State space for parallelization
     tasks_idx_nc = Vector{NTuple{6, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, t in fam_type, i_a in 1:apnts, i_z in 1:zpnts
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, i_a in 1:apnts_nc, i_z in 1:zpnts
         push!(tasks_idx_nc, (R, m, n, t, i_a, i_z))
     end
 
     tasks_idx_c1 = Vector{NTuple{6, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, i_a in 1:apnts, i_z in 1:zpnts
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, i_a in 1:apnts_nc, i_z in 1:zpnts
         push!(tasks_idx_c1, (R, m, n, t, e, i_a, i_z))
     end
 
     tasks_idx_c = Vector{NTuple{6, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3, i_a in 1:apnts, i_z in 1:zpnts
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3, i_a in 1:apnts_c, i_z in 1:zpnts
         push!(tasks_idx_c, (R, m, n, t, e, i_a, i_z))
     end
 
@@ -111,8 +115,8 @@ function model_create(;
                     if j <= working_years
                         shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, 1, t)
                         shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, 1, t)
-                        prob_in  = shocks_in_prob(R, n, m, j, y, a_income, 1, t, past_in, past_out)
-                        prob_out = shocks_out_prob(R, n, m, j, y, a_income, 1, t, past_in, past_out)
+                        prob_in  = shocks_in_prob(R, n, m, j, y, a_income, 1, t, past_in-1, past_out-1)
+                        prob_out = shocks_out_prob(R, n, m, j, y, a_income, 1, t, past_in-1, past_out-1)
                     else
                         shock_in_amount  = 0.0
                         shock_out_amount = 0.0
@@ -186,5 +190,6 @@ function model_create(;
         end
     end
 
-    return (; family_shock_probs, fam_type, fam_shock_period, r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx_nc, tasks_idx_c1, tasks_idx_c, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
+    return (; tuition_2yr, tuition_4yr, a_grid_nocollege, a_grid_college, apnts_nc, apnts_c,
+          working_years, jpnts, fam_shock_period, r_loan, family_shock_probs, fam_type, fam_shock_period, r, rb, ra_w, ra_b, gamma, beta, tax_a, survival_risk, Pimat, z_grid, a_grid, school_a_grid, d_limit, tasks_idx_nc, tasks_idx_c1, tasks_idx_c, y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc, shock_resources_c, net_transfers_c, prob_shocks_c)
 end
