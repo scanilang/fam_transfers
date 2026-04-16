@@ -66,11 +66,12 @@ function model_create(;
     end
 
     # Borrowing limit
-    d_limit = zeros(jpnts, 2, 2)
 
+    phi   = 0.22    # credit availability parameter — calibrate or take from CL
+    d_limit = zeros(jpnts, 2, 2)
     for R in Race, e in [2, 3]
         e_idx = e - 1
-        d_limit[:, R, e_idx] = compute_natural_borrowing_limit(z_grid, r_loan, jpnts, R, e)
+        d_limit[:, R, e_idx] = compute_borrowing_limit(z_grid, r_loan, jpnts, R, e, phi)
     end
     max_debt = maximum(d_limit)  # largest possible debt across all types
     d_points = [-max_debt, -max_debt*0.75, -max_debt*0.5, -max_debt*0.25, -5000.0, -1000.0, 0.0]

@@ -76,39 +76,41 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
 
     @threads for idx in eachindex(tasks_idx_c)
        (R, t, e, i_a) = tasks_idx_c[idx]
+       degree = e - 1
         
         a = a_grid_college[i_a]
-        tuition = e == 2 ? tuition_2yr : tuition_4yr
+        tuition = e == 2 ? tuition_2yr/e : tuition_4yr/e
         r = R == 1 ? ra_w : ra_b
 
         if a >= 0
-            resources = a * (1 + r) - tuition/e
+            resources = a * (1 + r) - tuition
         else
-            resources = a * (1 + r_loan) - tuition/e
+            resources = a * (1 + r_loan) - tuition
         end
 
-        borrow_floor = -d_limit[j, R, e-1]
+        borrow_floor = -d_limit[j, R, degree]
         ub = resources - 0.001
         lb = max(borrow_floor, ub - 1e6)
         
         if ub <= lb
-            Vsj[R, t, e-1, i_a] = -1e10
-            PFsj[R, t, e-1, i_a] = lb
+            Vsj[R, t, degree, i_a] = -1e10
+            PFsj[R, t, degree, i_a] = lb
         else
             if j == 2 && e == 1 || j == 4 && e == 2
-               result = optimize(
-                    ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * EVc_jp1(model, vjp1, j, R, 1, 1, t, e,ap1, 0, 1, 1, 1, 1)),
-                    lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+               # Transition to working phase
+                result = optimize(
+                            ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
+                                     beta * EV_graduation(model, vjp1_itp, R, t, degree, ap1)),
+                            lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else 
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                         beta * vsjp1_itp[R, t, e](ap1)),
+                         beta * vsjp1_itp[R, t, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
             
-            Vsj[R, t, e-1, i_a] = -result.minimum
-            PFsj[R, t, e-1, i_a] = result.minimizer
+            Vsj[R, t, degree, i_a] = -result.minimum
+            PFsj[R, t, degree, i_a] = result.minimizer
         end
     end
     return Vsj, PFsj
@@ -117,6 +119,44 @@ end
 # Value function for those that chose not to attend college
 # Positive assets only
 # e = 0 no college
+function EV_graduation(model, vjp1_itp, R, t, degree, ap1)
+    (; ra_w, ra_b, zpnts, z_grid, y_values,
+       shocks_in_prob, shocks_out_prob) = model
+    
+    # At graduation: single (m=1), no kids (n=1), no transfer history
+    m = 1
+    n = 1
+    past_in = 0
+    past_out = 0
+    
+    a_income = ap1 >= 0 ? (R == 1 ? ap1 * ra_w : ap1 * ra_b) : 0.0
+    
+    # At graduation, which working j? 2yr → j=3 (age 20), 4yr → j=5 (age 22)
+    j_grad_work = degree == 1 ? 3 : 5
+    
+    expected_value = 0.0
+    
+    # Integrate over initial z (uniform — no prior work history)
+    for i_z in 1:zpnts
+        pi_z = 1.0 / zpnts
+        z_val = z_grid[R][i_z]
+        y = y_values[R, j_grad_work, m, degree, i_z]
+        
+        # Integrate over first-period transfer shocks
+        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in, past_out)
+        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in, past_out)
+        
+        for shock_in in 1:2, shock_out in 1:2
+            p_in  = shock_in  == 2 ? prob_in  : 1 - prob_in
+            p_out = shock_out == 2 ? prob_out : 1 - prob_out
+            
+            expected_value += pi_z * p_in * p_out *
+                vjp1_itp[R, m, n, t, degree, shock_in, shock_out, past_in, past_out](ap1, z_val)
+        end
+    end
+    
+    return expected_value
+end
 
 ###############################################################################################
 # Working

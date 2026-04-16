@@ -92,45 +92,48 @@ function solve_model(model)
     # j=5: age 22 — 4yr enrolled year 4 / graduation (enters Vj_c at j=5)
     # -----------------------------------------------------------------------
 
-    # School state space: (R, t_parent, degree, i_a)
-    # t_parent: 3 (low, mid, high) — parental background during school
-    # degree: 2 (2yr=1, 4yr=2)
-    # No (m, n, shock) dims during school — agent not yet household head
+    # School state: (R, t, degree, i_a)
+    # 2yr path: j=1 (first period, decision) → j=2 (graduation, enters Vj_c[3])
+    # 4yr path: j=1 (first period, decision) → j=2 → j=3 → j=4 (graduation, enters Vj_c[5])
 
-    # Enrolled periods — solve backward from graduation
-    # 2yr: one enrolled period j=2, graduates into Vj_c[2,:] at j=3
-    # 4yr: three enrolled periods j=2,3,4, graduates into Vj_c[5,:] at j=5
-
-    # Arrays: (R, t_parent, degree, i_a)
-    n_school_periods = 4   # j=1 to j=4 (age 18-21), j=5 is graduation for 4yr
+    # Arrays with shape (j, R, t, degree, i_a_school)
+    n_school_periods = 4
     Vsj  = zeros(Float32, n_school_periods, 2, 3, 2, apnts_c)
     PFsj = copy(Vsj)
 
-    # j=4 (age 21): 4yr final enrolled year — continuation is Vj_c[5] (working at 22)
-    # j=2 (age 19): 2yr final enrolled year — continuation is Vj_c[3] (working at 20)
-    # Graduation transitions: 2yr exits at j=3, 4yr exits at j=5
+    # Solve backward
+    # j=4: last 4yr period — continuation is Vj_c at j=5 (first working period for 4yr)
+    # For 2yr this j doesn't apply, leave as zeros
+    Vj_c_5 = @view Vj_c[5, :,:,:,:,:,:,:,:,:,:,:]
+    Vsj[4,:,:,:,:], PFsj[4,:,:,:,:] = VSj_enrolled(
+        zeros(Float32, 2, 3, 2, apnts_c),   # vsjp1 (not used since j=4 graduates)
+        Vj_c_5,                               # working continuation for 4yr
+        Vsj[4,:,:,:,:], PFsj[4,:,:,:,:],
+        model, 4)
 
-    # Solve last enrolled period for 4yr (j=4, graduating into j=5 working)
-    V_grad_4yr = @view Vj_c[5, :,:,:,:,:,:,:,:,:,:,:]   # working at age 22
-    Vsj[4,:,:,:,:], PFsj[4,:,:,:,:] = VSj_enrolled(V_grad_4yr, nothing, model, 4)
+    # j=3: still enrolled 4yr, 2yr doesn't apply
+    Vsj[3,:,:,:,:], PFsj[3,:,:,:,:] = VSj_enrolled(
+        @view(Vsj[4,:,:,:,:]),   # next school period
+        nothing,                  # no graduation at j=3
+        Vsj[3,:,:,:,:], PFsj[3,:,:,:,:],
+        model, 3)
 
-    # j=3 for 4yr (still enrolled), j=2 is graduation year for 2yr
-    V_grad_2yr = @view Vj_c[3, :,:,:,:,:,:,:,:,:,:,:]   # working at age 20
-    Vsj[3,:,:,:,:], PFsj[3,:,:,:,:] = VSj_enrolled(V_grad_2yr, @view(Vsj[4,:,:,:,:]), model, 3)
+    # j=2: 2yr graduates, 4yr still enrolled
+    Vj_c_3 = @view Vj_c[3, :,:,:,:,:,:,:,:,:,:,:]
+    Vsj[2,:,:,:,:], PFsj[2,:,:,:,:] = VSj_enrolled(
+        @view(Vsj[3,:,:,:,:]),    # 4yr continuation
+        Vj_c_3,                     # 2yr graduation continuation
+        Vsj[2,:,:,:,:], PFsj[2,:,:,:,:],
+        model, 2)
 
-    # j=2: 2yr graduation year, 4yr second enrolled year
-    Vsj[2,:,:,:,:], PFsj[2,:,:,:,:] = VSj_enrolled(V_grad_2yr, @view(Vsj[3,:,:,:,:]), model, 2)
-
-    # j=1: first period — education decision
-    # Vsj[2] is the value of being enrolled next period
-    # Vj_nc[1] is the value of no college at j=1
-    Vsj_1  = zeros(Float32, 2, 2, 5, 3, 3, apnts_nc, zpnts, 2, 2)
+    # j=1: education decision + first enrolled year
+    # Arrays: (R, t, i_a_nc, edu_shock, degree)
+    Vsj_1  = zeros(Float32, 2, 3, apnts_nc, 2, 2)
     PFsj_1 = copy(Vsj_1)
 
     Vsj_1, PFsj_1 = VSj_first_period(
-        @view(Vsj[2,:,:,:,:]),    # continuation if enrolled
-        Vsj_1, PFsj_1, model
-    )
+        @view(Vsj[2,:,:,:,:]),
+        Vsj_1, PFsj_1, model)
 
     # -----------------------------------------------------------------------
     # Return everything needed for simulation and education decision

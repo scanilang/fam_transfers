@@ -9,7 +9,13 @@ library(stargazer)
 
 psid_clean = read.csv('../data/psid_clean.csv') %>% 
   filter(Marital_Status %in% c("Married", "Single"), Age <= 85, Age >= 18) %>% 
-  mutate(Marital_Status = forcats::fct_relevel(Marital_Status, c("Single", "Married")))
+  mutate(Head_College = factor(Head_College, 
+                               levels = c("No College", "Some College", "College Degree")),
+         Marital_Status = factor(Marital_Status,
+                                 levels = c("Single", "Married")),
+         family_type = factor(family_type,
+                              levels = c("low", "mid", "high")))
+
 ##############################################################################################################################################################################
 # Step 1: Probit
 ##############################################################################################################################################################################
