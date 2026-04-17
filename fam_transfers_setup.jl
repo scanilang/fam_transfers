@@ -336,3 +336,15 @@ for row in eachrow(fam_shock_df)
     outcome = (row.m, row.n, t_map[row.t], Float64(row.prob))
     push!(get!(family_shock_probs, key, Tuple{Int,Int,Int,Float64}[]), outcome)
 end
+
+function compute_t_own(y_p, a_inc_p)
+    # Thresholds from PSID data — match how family_type was coded in 1.1
+    total_p = y_p + a_inc_p
+    if total_p < y_low_threshold
+        return 1  # both_low (poor)
+    elseif total_p > y_high_threshold
+        return 3  # both_high (well off)
+    else
+        return 2  # both_mid
+    end
+end
