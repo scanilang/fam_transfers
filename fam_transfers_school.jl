@@ -120,41 +120,36 @@ end
 # Positive assets only
 # e = 0 no college
 function EV_graduation(model, vjp1_itp, R, t, degree, ap1)
-    (; ra_w, ra_b, zpnts, z_grid, y_values,
-       shocks_in_prob, shocks_out_prob) = model
-    
-    # At graduation: single (m=1), no kids (n=1), no transfer history
-    m = 1
-    n = 1
-    past_in = 0
-    past_out = 0
-    
+    (; ra_w, ra_b, zpnts, z_grid, y_values) = model
+
+    m = 1  # single
+    n = 1  # no kids
+    past_in = 1   # no history (1=no, 2=yes)
+    past_out = 1
+
     a_income = ap1 >= 0 ? (R == 1 ? ap1 * ra_w : ap1 * ra_b) : 0.0
-    
-    # At graduation, which working j? 2yr → j=3 (age 20), 4yr → j=5 (age 22)
-    j_grad_work = degree == 1 ? 3 : 5
-    
+
+    j_grad_work = degree == 1 ? 3 : 5  # age 20 or 22
+
     expected_value = 0.0
-    
-    # Integrate over initial z (uniform — no prior work history)
     for i_z in 1:zpnts
         pi_z = 1.0 / zpnts
         z_val = z_grid[R][i_z]
-        y = y_values[R, j_grad_work, m, degree, i_z]
-        
-        # Integrate over first-period transfer shocks
-        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in-1, past_out-1   )
-        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree, t, past_in-1, past_out-1)
-        
+        y = y_values[R, j_grad_work, m, degree+1, i_z]  # degree+1 maps to e=2 or 3
+
+        # Note: pass past_in-1, past_out-1 to match probit's 0/1 convention
+        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree+1, t, past_in-1, past_out-1)
+        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree+1, t, past_in-1, past_out-1)
+
         for shock_in in 1:2, shock_out in 1:2
             p_in  = shock_in  == 2 ? prob_in  : 1 - prob_in
             p_out = shock_out == 2 ? prob_out : 1 - prob_out
-            
+
             expected_value += pi_z * p_in * p_out *
                 vjp1_itp[R, m, n, t, degree, shock_in, shock_out, past_in, past_out](ap1, z_val)
         end
     end
-    
+
     return expected_value
 end
 
