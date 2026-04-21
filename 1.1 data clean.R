@@ -340,6 +340,17 @@ psid_clean = psid_ind %>%
 
 write.csv(psid_clean, "../data/psid_clean.csv")
 
+####################################################
+# Thresholds for poor, medium, high 
+###################################################
+
+threshold_y = psid_clean %>% 
+  mutate(y_star = Total_NonAsset_Income + Total_Asset_Income,
+         log_y_star = log(y_star + 1)) 
+
+θ_low  <- Hmisc::wtd.quantile(psid_clean$log_y_star, weights = psid_clean$weight, probs = 0.35)
+θ_high <- Hmisc::wtd.quantile(psid_clean$log_y_star, weights = psid_clean$weight, probs = 0.81)
+
 # 
 # View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,
 #                            Received_ChildSupport_Spouse, Received_ChildSupport_Head , Received_Alimony_Head, Age_Youngest,Have_Dependents, rec_al, rec_cs, prov_al, prov_cs) %>% 

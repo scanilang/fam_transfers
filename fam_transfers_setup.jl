@@ -337,8 +337,11 @@ for row in eachrow(fam_shock_df)
     push!(get!(family_shock_probs, key, Tuple{Int,Int,Int,Float64}[]), outcome)
 end
 
+const y_low_threshold  = 41062.48  # 2010 dollars
+const y_high_threshold = 112613.9
+
 function compute_t_own(y_p, a_inc_p)
-    # Thresholds from PSID data — match how family_type was coded in 1.1
+    # Thresholds from PSID data (using )
     total_p = y_p + a_inc_p
     if total_p < y_low_threshold
         return 1  # both_low (poor)

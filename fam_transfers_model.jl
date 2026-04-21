@@ -65,6 +65,11 @@ function model_create(;
         push!(tasks_idx_c, (R, m, n, t, e, i_a, i_z))
     end
 
+    tasks_idx_c1 = Vector{NTuple{7, Int64}}()
+    for R in Race, m in marital_status, t in fam_type, e in 1:3, i_a_p in 1:apnts_nc, i_a in 1:apnts_nc, i_z in 1:zpnts
+        push!(tasks_idx_c1, (R, m, t, e, i_a_p, i_a, i_z))
+    end
+
     # School task index — simple (R, t, i_a) only
     tasks_idx_school = Vector{NTuple{3, Int64}}()
     for R in Race, t in fam_type, i_a in 1:apnts_c
@@ -88,7 +93,7 @@ function model_create(;
               working_years, jpnts, fam_shock_period,
               family_shock_probs, fam_type, r, rb, ra_w, ra_b, gamma, beta, tax_a,
               survival_risk, Pimat, z_grid, a_grid, d_limit,
-              tasks_idx_nc, tasks_idx_c, tasks_idx_school,
+              tasks_idx_nc, tasks_idx_c, tasks_idx_c1, tasks_idx_school,
               y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc,
               shock_resources_c, net_transfers_c, prob_shocks_c,
               Race, marital_status, fam_size, ed_type, zpnts)

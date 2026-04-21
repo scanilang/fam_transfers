@@ -5,21 +5,29 @@
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     (; beta, gamma, ra_w, ra_b, tasks_idx_c1, a_grid_nocollege, d_limit,
-       tuition_2yr, tuition_4yr, y_values) = model
+       tuition_2yr, tuition_4yr, y_values, tax_a) = model
 
     fill!(Vsj_1, 0f0)
     fill!(PFsj_1, 0f0)
 
-    vsjp1_itp = [LinearInterpolation((a_grid_nocollege), vsjp1[R, t, degree, :], extrapolation_bc=Interpolations.Flat()) 
-                                for R in Race, t in fam_type, degree in 1:2]
+    vsjp1_itp = [LinearInterpolation((a_grid_nocollege), vsjp1[R, t_own, degree, :], extrapolation_bc=Interpolations.Flat()) 
+                                for R in Race, t_own in fam_type, degree in 1:2]
 
     @threads for idx in eachindex(tasks_idx_c1)
-       (R, m, n, t, e, i_a, i_z) = tasks_idx_c1[idx]
+        # Parent characteristics 
+       (R, m, t, e, i_a_p, i_a, i_z) = tasks_idx_c1[idx]
         
-        # Skip negative assets in first period since they can't borrow yet    
-        a = a_grid_nocollege[i_a]
-
         r = R == 1 ? ra_w : ra_b
+
+        # Skip negative assets in first period since they can't borrow yet    
+        a = a_grid_nocollege[i_a] # child's starting assets
+        a_p = a_grid_nocollege[i_a_p] # parent's assets
+
+        # Student's family type based on parents characteristics
+        y_p = y_values[R, 43, m, e, i_z] # Parents age when child is 18
+        a_inc_p = a_p * r
+        t_own = compute_t_own(y_p, a_inc_p)
+
         for edu_help in 1:2, degree in 1:2
 
             degree_choice  = [2, 4][degree]
@@ -27,30 +35,28 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 ``
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
-                a_income = a* r
-                y = y_values[R, 43, m, e, i_z] # Parents age when child is 18
-                edu_transfer  = edu_transfer_amount(R, y, a_income, e, degree_choice)
+                edu_transfer  = edu_transfer_amount(R, y, a_inc_p, e, degree_choice)
             else
                 edu_transfer = 0.0
             end
             
-            resources = a * (1 + r) + edu_transfer - tuition 
+            resources = a * (1 + r*(1-tax_a)) + edu_transfer - tuition 
             
             borrow_floor = -d_limit[1, R, degree]
             ub = resources
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vsj_1[R, m, e, i_a, i_z, edu_help, degree] = -1e10
-                PFsj_1[R, m, e, i_a, i_z, edu_help, degree] = lb
+                Vsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = -1e10
+                PFsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                             beta * vsjp1_itp[R, t, degree](ap1)),
+                             beta * vsjp1_itp[R, t_own, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                Vsj_1[R, m, e, i_a, i_z, edu_help, degree] = -result.minimum
-                PFsj_1[R, m, e, i_a, i_z, edu_help, degree] = result.minimizer
+                Vsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = -result.minimum
+                PFsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = result.minimizer
             end
         end
     end
