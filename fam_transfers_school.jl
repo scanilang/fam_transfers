@@ -160,7 +160,7 @@ end
 
 
 function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period, z_grid, Race, marital_status, fam_size, fam_type) = model
+    (; beta, gamma,a_grid_college, tasks_idx_c1, shock_resources_c, d_limit, fam_shock_period, z_grid, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_c1, 0f0)
     fill!(PFj_c1, 0f0)
@@ -177,8 +177,8 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     end
 
 
-    @threads for idx in eachindex(tasks_idx_c)
-        (R, t, degree, i_a, i_z) = tasks_idx_c[idx]
+    @threads for idx in eachindex(tasks_idx_c1)
+        (R, t, degree, i_a, i_z) = tasks_idx_c1[idx]
         e = degree + 1  # maps degree choice to e (2 or 3)
         vc1_itp = vc1jp1_itp[R, t, degree, :, :, :, :]
 
@@ -292,7 +292,7 @@ function EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
 end
 
 function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type) = model
+    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
 
     fill!(Vj_c2, 0f0)
     fill!(PFj_c2, 0f0)
