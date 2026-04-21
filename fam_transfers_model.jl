@@ -128,7 +128,11 @@ function model_create(;
                     shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
                     shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
                     transfer_in    = (shock_in  - 1) * shock_in_amount
-                    transfer_out   = (shock_out - 1) * shock_out_amount
+                    
+                    # Apply cap to transfer_out based on realized transfer_in
+                    c_floor = m == 1 ? 5400.0 : 10800.0
+                    shock_out_effective = effective_transfer_out(c_floor, shock_out_amount, y, y_tax, a_income, transfer_in)   
+                    transfer_out   = (shock_out - 1) * shock_out_effective
 
                     shock_resources_nc[j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] =
                         y - y_tax + transfer_in - transfer_out + a_next
@@ -178,7 +182,11 @@ function model_create(;
                     shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
                     shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
                     transfer_in    = (shock_in  - 1) * shock_in_amount
-                    transfer_out   = (shock_out - 1) * shock_out_amount
+
+                    # Apply cap to transfer_out based on realized transfer_in
+                    c_floor = m == 1 ? 5400.0 : 10800.0
+                    shock_out_effective = effective_transfer_out(c_floor, shock_out_amount, y, y_tax, a_income, transfer_in)   
+                    transfer_out   = (shock_out - 1) * shock_out_effective
 
                     shock_resources_c[j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out] =
                         y - y_tax + transfer_in - transfer_out + a_next

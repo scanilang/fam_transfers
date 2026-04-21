@@ -247,6 +247,14 @@ function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     return exp(val)
 end
 
+function effective_transfer_out(c_floor, T_raw, y, y_tax, a_income_flow, transfer_in_realized)
+    # Own resources before choosing a' 
+    own_resources = y - y_tax + a_income_flow + transfer_in_realized
+    # Max feasible transfer leaves c_floor for consumption
+    max_transfer = max(0.0, own_resources - c_floor)
+    return min(T_raw, max_transfer)
+end
+
 ###############################################################################################
 # Survival Probabilities
 ###############################################################################################

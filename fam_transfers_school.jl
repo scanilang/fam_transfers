@@ -35,12 +35,12 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
-                edu_transfer  = edu_transfer(R, y_p, a_inc_p, e, degree_choice)
+                edu_transfer_val  = edu_transfer(R, y_p, a_inc_p, e, degree_choice)
             else
-                edu_transfer = 0.0
+                edu_transfer_val = 0.0
             end
             
-            resources = a * (1 + r*(1-tax_a)) + edu_transfer - tuition 
+            resources = a * (1 + r*(1-tax_a)) + edu_transfer_val - tuition 
             
             borrow_floor = -d_limit[1, R, degree]
             ub = resources
