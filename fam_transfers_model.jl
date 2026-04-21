@@ -65,7 +65,6 @@ function model_create(;
         push!(tasks_idx_nc1, (R, t, i_a, i_z))
     end
 
-
     tasks_idx_c2 = Vector{NTuple{7, Int64}}()
     for R in Race, m in marital_status, n in fam_size, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
         push!(tasks_idx_c2, (R, m, n, t, degree, i_a, i_z))

@@ -5,7 +5,7 @@
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     (; beta, gamma, ra_w, ra_b, tasks_idx_s1, a_grid_nocollege, d_limit,
-       tuition_2yr, tuition_4yr, y_values, tax_a) = model
+       tuition_2yr, tuition_4yr, y_values, tax_a, Race, fam_type) = model
 
     fill!(Vsj_1, 0f0)
     fill!(PFsj_1, 0f0)
@@ -32,10 +32,10 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 
             degree_choice  = [2, 4][degree]
             tuition = degree_choice == 2 ? tuition_2yr : tuition_4yr
-``
+
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
-                edu_transfer  = edu_transfer_amount(R, y_p, a_inc_p, e, degree_choice)
+                edu_transfer  = edu_transfer(R, y_p, a_inc_p, e, degree_choice)
             else
                 edu_transfer = 0.0
             end
@@ -64,8 +64,8 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 end
 
 function VSj_enrolled(vsjp1, vc1jp1, model, j)
-    (; beta, gamma, r, r_loan, a_grid_college, d_limit,
-       tuition_2yr, tuition_4yr, tasks_idx_s2) = model
+    (; beta, gamma, r, r_loan, a_grid_college, d_limit,z_grid,
+       tuition_2yr, tuition_4yr, tasks_idx_s2, Race, fam_type) = model
 
     fill!(Vsj, 0f0)
     fill!(PFsj, 0f0)
@@ -101,7 +101,7 @@ function VSj_enrolled(vsjp1, vc1jp1, model, j)
             Vsj[R, t, degree, i_a] = -1e10
             PFsj[R, t, degree, i_a] = lb
         else
-            if j == 2 && e == 2 || j == 4 && e == 3
+            if j == 2 && degree == 1 || j == 4 && degree == 2
                # Transition to working phase
                 result = optimize(
                             ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
@@ -160,7 +160,7 @@ end
 
 
 function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period) = model
+    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period, z_grid, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_c1, 0f0)
     fill!(PFj_c1, 0f0)
@@ -292,7 +292,7 @@ function EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
 end
 
 function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit) = model
+    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_c2, 0f0)
     fill!(PFj_c2, 0f0)
@@ -392,7 +392,7 @@ end
 ###############################################################################################
 
 function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
-    (; survival_risk, beta, gamma , shock_resources_c, a_grid_college, tasks_idx_c2, jpnts, d_limit) = model
+    (; survival_risk, beta, gamma , shock_resources_c, z_grid, a_grid_college, tasks_idx_c2, jpnts, d_limit, Race, marital_status, fam_type) = model
 
     fill!(Wj_c, 0f0)
     fill!(WPFj_c, 0f0)

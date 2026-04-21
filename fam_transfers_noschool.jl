@@ -7,7 +7,7 @@
 ###############################################################################################
 
 function Vnc1j_solve(vnc1jp1, vnc2jp1, Vj_nc1, PFj_nc1, model, j)
-    (; beta, gamma,a_grid_nocollege, tasks_idx_nc, shock_resources_nc, fam_shock_period) = model
+    (; beta, gamma,a_grid_nocollege, tasks_idx_nc1, shock_resources_nc, z_grid, fam_shock_period, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_nc1, 0f0)
     fill!(PFj_nc1, 0f0)
@@ -16,21 +16,22 @@ function Vnc1j_solve(vnc1jp1, vnc2jp1, Vj_nc1, PFj_nc1, model, j)
     vnc1jp1_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc1jp1[R, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
            for R in Race, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
-    if j < working_years
+    if j < fam_shock_period
         vnc2_itp = nothing
     else
         vnc2_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc2jp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
       end
 
-    @threads for idx in eachindex(tasks_idx_nc)
+    @threads for idx in eachindex(tasks_idx_nc1)
         (R, t, i_a, i_z) = tasks_idx_nc1[idx]
 
         vnc1_itp = vnc1jp1_itp[R, t, :, :, :, :]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_nc[j, R, m, n,t, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            # hardcode m=1, n=1 since single and no family
+            net_resources = shock_resources_nc[j, R, 1, 1, t, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j < fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
@@ -93,7 +94,7 @@ end
 
 
 # Expected value with family transition
-function EVnc_family_jp1(model, vnc_itp, j, R,  ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
@@ -127,7 +128,7 @@ function EVnc_family_jp1(model, vnc_itp, j, R,  ap1, i_z, shock_in, shock_out, p
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vnc_itp[R, m_next, n_next, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vnc2_itp[R, m_next, n_next, t_next, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
        
             end
         end
@@ -137,7 +138,7 @@ function EVnc_family_jp1(model, vnc_itp, j, R,  ap1, i_z, shock_in, shock_out, p
 end
 
 function Vnc2_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
-    (; beta, gamma,a_grid_nocollege, tasks_idx_nc2, shock_resources_nc) = model
+    (; beta, gamma,a_grid_nocollege, tasks_idx_nc2, shock_resources_nc, z_grid, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_nc2, 0f0)
     fill!(PFj_nc2, 0f0)
@@ -233,7 +234,7 @@ end
 ###############################################################################################
 
 function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
-    (; survival_risk, beta, gamma , shock_resources_nc, a_grid_nocollege, tasks_idx_nc2, jpnts) = model
+    (; survival_risk, beta, gamma , shock_resources_nc, a_grid_nocollege, z_grid, tasks_idx_nc2, jpnts, Race, marital_status, fam_type) = model
 
     fill!(Wj_nc, 0f0)
     fill!(WPFj_nc, 0f0)
