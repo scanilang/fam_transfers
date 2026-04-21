@@ -166,7 +166,7 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     fill!(PFj_c1, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vc1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+    vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
            for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
     if j < fam_shock_period
@@ -180,7 +180,7 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     @threads for idx in eachindex(tasks_idx_c)
         (R, t, degree, i_a, i_z) = tasks_idx_c[idx]
         e = degree + 1  # maps degree choice to e (2 or 3)
-        vc1jp1_itp = vc1_itp[R, t, degree, :, :, :, :]
+        vc1_itp = vc1jp1_itp[R, t, degree, :, :, :, :]
 
         # Lower bound: natural borrowing limit
         lb = -d_limit[j, R, degree]
@@ -191,7 +191,7 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
 
             if j < fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc1_jp1(model, vc1jp1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
@@ -207,7 +207,7 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     return Vj_c1, PFj_c1
 end
 
-function EVc1_jp1(model, vjp1, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
@@ -240,7 +240,7 @@ function EVc1_jp1(model, vjp1, j, R, t, e, ap1, i_z, shock_in, shock_out, past_i
             end
 
             # expected value contribution from next period state
-            expected_value += pi_z * shock_out_next_prob *  shock_in_next_prob* vjp1[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+            expected_value += pi_z * shock_out_next_prob *  shock_in_next_prob* vc1_itp[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
         end
     end
 

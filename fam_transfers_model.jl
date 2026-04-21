@@ -55,10 +55,16 @@ function model_create(;
     apnts_c  = length(a_grid_college)
 
     # Task indices — NOW define these
-    tasks_idx_nc = Vector{NTuple{6, Int64}}()
+    tasks_idx_nc2 = Vector{NTuple{6, Int64}}()
     for R in Race, m in marital_status, n in fam_size, t in fam_type, i_a in 1:apnts_nc, i_z in 1:zpnts
-        push!(tasks_idx_nc, (R, m, n, t, i_a, i_z))
+        push!(tasks_idx_nc2, (R, m, n, t, i_a, i_z))
     end
+
+    tasks_idx_nc1 = Vector{NTuple{6, Int64}}()
+    for R in Race, t in fam_type, i_a in 1:apnts_nc, i_z in 1:zpnts
+        push!(tasks_idx_nc1, (R, t, i_a, i_z))
+    end
+
 
     tasks_idx_c2 = Vector{NTuple{7, Int64}}()
     for R in Race, m in marital_status, n in fam_size, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
@@ -191,7 +197,7 @@ function model_create(;
               working_years, jpnts, fam_shock_period,
               family_shock_probs, fam_type, r, rb, ra_w, ra_b, gamma, beta, tax_a,
               survival_risk, Pimat, z_grid, a_grid, d_limit,
-              tasks_idx_nc, tasks_idx_s2, tasks_idx_c1, tasks_idx_c2, tasks_idx_s1,
+              tasks_idx_nc1, tasks_idx_nc2, tasks_idx_s2, tasks_idx_c1, tasks_idx_c2, tasks_idx_s1,
               y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc,
               shock_resources_c, net_transfers_c, prob_shocks_c,
               Race, marital_status, fam_size, ed_type, zpnts)
