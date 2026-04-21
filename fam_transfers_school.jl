@@ -14,7 +14,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
                                 for R in Race, t_own in fam_type, degree in 1:2]
 
     @threads for idx in eachindex(tasks_idx_c1)
-        # Parent characteristics 
+        # Parent characteristics and starting asset for child
        (R, m, t, e, i_a_p, i_a, i_z) = tasks_idx_c1[idx]
         
         r = R == 1 ? ra_w : ra_b
@@ -31,11 +31,11 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
         for edu_help in 1:2, degree in 1:2
 
             degree_choice  = [2, 4][degree]
-            tuition = degree_choice == 2 ? tuition_2yr/2 : tuition_4yr/4
+            tuition = degree_choice == 2 ? tuition_2yr : tuition_4yr
 ``
             if edu_help == 2
                 # Parental transfer (lump sum) (based on parents characteristics and student's degree choice)
-                edu_transfer  = edu_transfer_amount(R, y, a_inc_p, e, degree_choice)
+                edu_transfer  = edu_transfer_amount(R, y_p, a_inc_p, e, degree_choice)
             else
                 edu_transfer = 0.0
             end
@@ -47,23 +47,23 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
             lb = max(borrow_floor, ub - 1e6)
             
             if ub <= lb
-                Vsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = -1e10
-                PFsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = lb
+                Vsj_1[R, m, t, e, i_a_p, i_a, i_z, edu_help, degree] = -1e10
+                PFsj_1[R, m, t, e, i_a_p, i_a, i_z, edu_help, degree] = lb
             else
                 result = optimize(
                     ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
                              beta * vsjp1_itp[R, t_own, degree](ap1)),
                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 
-                Vsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = -result.minimum
-                PFsj_1[R, m, t, e, i_a, i_z, edu_help, degree] = result.minimizer
+                Vsj_1[R, m, t, e, i_a_p, i_a, i_z, edu_help, degree] = -result.minimum
+                PFsj_1[R, m, t, e, i_a_p, i_a, i_z, edu_help, degree] = result.minimizer
             end
         end
     end
     return Vsj_1, PFsj_1
 end
 
-function VSj_enrolled(vsjp1, vjp1, model, j)
+function VSj_enrolled(vsjp1, vc1jp1, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
        tuition_2yr, tuition_4yr, tasks_idx_c) = model
 
@@ -74,18 +74,17 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
                                 for R in Race, t in fam_type, degree in 1:2]
 
     if j < working_years
-        vjp1_itp = nothing
+        vc1jp1_itp = nothing
     else
-        vjp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+               for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
     @threads for idx in eachindex(tasks_idx_c)
-       (R, t, e, i_a) = tasks_idx_c[idx]
-       degree = e - 1
+       (R, t, degree, i_a) = tasks_idx_c[idx]
         
         a = a_grid_college[i_a]
-        tuition = e == 2 ? tuition_2yr/e : tuition_4yr/e
+        tuition = degree == 1 ? tuition_2yr : tuition_4yr
         r = R == 1 ? ra_w : ra_b
 
         if a >= 0
@@ -102,11 +101,11 @@ function VSj_enrolled(vsjp1, vjp1, model, j)
             Vsj[R, t, degree, i_a] = -1e10
             PFsj[R, t, degree, i_a] = lb
         else
-            if j == 2 && e == 1 || j == 4 && e == 2
+            if j == 2 && e == 2 || j == 4 && e == 3
                # Transition to working phase
                 result = optimize(
                             ap1 -> -(u(max(resources - ap1, 0.001), gamma) +
-                                     beta * EV_graduation(model, vjp1_itp, R, t, degree, ap1)),
+                                     beta * EV_graduation(model, vc1jp1_itp, R, t, degree, ap1)),
                             lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else 
                 result = optimize(
@@ -124,14 +123,10 @@ end
 
 # Value function for those that chose not to attend college
 # Positive assets only
-# e = 0 no college
-function EV_graduation(model, vjp1_itp, R, t, degree, ap1)
+function EV_graduation(model, vc1jp1_itp, R, t, degree, ap1)
     (; ra_w, ra_b, zpnts, z_grid, y_values) = model
 
-    m = 1  # single
-    n = 1  # no kids
-    past_in = 1   # no history (1=no, 2=yes)
-    past_out = 1
+    e = degree + 1  # maps degree choice to e (2 or 3)
 
     a_income = ap1 >= 0 ? (R == 1 ? ap1 * ra_w : ap1 * ra_b) : 0.0
 
@@ -141,18 +136,18 @@ function EV_graduation(model, vjp1_itp, R, t, degree, ap1)
     for i_z in 1:zpnts
         pi_z = 1.0 / zpnts
         z_val = z_grid[R][i_z]
-        y = y_values[R, j_grad_work, m, degree+1, i_z]  # degree+1 maps to e=2 or 3
+        y = y_values[R, j_grad_work, 1, e, i_z]  # e maps to the correct education level
 
         # Note: pass past_in-1, past_out-1 to match probit's 0/1 convention
-        prob_in  = shocks_in_prob(R, n, m, j_grad_work, y, a_income, degree+1, t, past_in-1, past_out-1)
-        prob_out = shocks_out_prob(R, n, m, j_grad_work, y, a_income, degree+1, t, past_in-1, past_out-1)
+        prob_in  = shocks_in_prob(R, 1, 1, j_grad_work, y, a_income, e, t, 0, 0)
+        prob_out = shocks_out_prob(R, 1, 1, j_grad_work, y, a_income, e, t, 0, 0)
 
         for shock_in in 1:2, shock_out in 1:2
             p_in  = shock_in  == 2 ? prob_in  : 1 - prob_in
             p_out = shock_out == 2 ? prob_out : 1 - prob_out
 
             expected_value += pi_z * p_in * p_out *
-                vjp1_itp[R, m, n, t, degree, shock_in, shock_out, past_in, past_out](ap1, z_val)
+                vc1jp1_itp[R, t, degree, shock_in, shock_out, 1, 1](ap1, z_val)
         end
     end
 
@@ -163,11 +158,12 @@ end
 # Working
 ###############################################################################################
 
-function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
+
+function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period) = model
 
-    fill!(Vj_c, 0f0)
-    fill!(PFj_c, 0f0)
+    fill!(Vj_c1, 0f0)
+    fill!(PFj_c1, 0f0)
 
     # When creating interpolation objects for Vj+1:
     vc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
@@ -180,6 +176,59 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
+
+    @threads for idx in eachindex(tasks_idx_c)
+        (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
+
+        vcjp1_itp = vc_itp[R, m, n, t, e-1, :, :, :, :]
+        if j < working_years
+            wcjp1_itp = nothing
+        else    
+            wcjp1_itp = wc_itp[R, m, n, t, e-1, :, :, :, :]
+        end
+
+        # Lower bound: natural borrowing limit
+        lb = -d_limit[j, R, e-1]
+
+        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
+
+            net_resources = shock_resources_c[j, R, m, n,t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+
+            if j < fam_shock_period
+                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+            else
+                          result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                     beta * EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+            end
+        
+            Vj_c1[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+            PFj_c1[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+        end
+    end
+    
+    return Vj_c1, PFj_c1
+end
+
+
+function Vc2j_solve(vcjp1, wcjp1, Vj_c2, PFj_c2, model, j)
+    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period) = model
+
+    fill!(Vj_c2, 0f0)
+    fill!(PFj_c2, 0f0)
+
+    # When creating interpolation objects for Vj+1:
+    vc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+
+    if j < working_years
+        wc_itp = nothing
+    else
+        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    end
 
 
     @threads for idx in eachindex(tasks_idx_c)
@@ -214,12 +263,12 @@ function Vcj_solve(vcjp1, wcjp1, Vj_c, PFj_c, model, j)
                      lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
-            Vj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-            PFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+            Vj_c2[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+            PFj_c2[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
         end
     end
     
-    return Vj_c, PFj_c
+    return Vj_c2, PFj_c2
 end
 
 # Expected family with no family transition

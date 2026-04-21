@@ -5,8 +5,8 @@ function model_create(;
     rb = 0.05,
     ra_w = 6.09,
     ra_b = 2.91,
-    tuition_2yr = 5000.0,
-    tuition_4yr = 15000.0,
+    tuition_2yr = 5000.0, #yearly tuition cost for 2-year degree
+    tuition_4yr = 15000.0, #yearly tuition cost for 4-year degree
     r_loan = 0.06,
     survival_risk = survival_risk_full,
     Race = [1, 2],
@@ -61,8 +61,8 @@ function model_create(;
     end
 
     tasks_idx_c = Vector{NTuple{7, Int64}}()
-    for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3, i_a in 1:apnts_c, i_z in 1:zpnts
-        push!(tasks_idx_c, (R, m, n, t, e, i_a, i_z))
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
+        push!(tasks_idx_c, (R, m, n, t, degree, i_a, i_z))
     end
 
     tasks_idx_c1 = Vector{NTuple{7, Int64}}()
@@ -86,7 +86,100 @@ function model_create(;
         end
     end
 
-    # ... (rest of shock_resources_nc and shock_resources_c precomputation as before)
+    # Precomputation for no-college and college paths
+    shock_resources_nc = zeros(Float64, jpnts, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
+    net_transfers_nc   = zeros(Float64, jpnts, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
+    prob_shocks_nc     = zeros(Float64, jpnts, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
+
+    for j in 1:jpnts, R in Race, m in marital_status, n in fam_size, t in fam_type
+        for i_a in 1:apnts_nc
+            a        = a_grid_nocollege[i_a]
+            r        = R == 1 ? ra_w : ra_b
+            a_income = a * r
+            a_next   = a * (1 + r * (1 - tax_a))
+
+            for i_z in 1:zpnts
+                y     = y_values[R, j, m, 1, i_z]
+                y_tax = j <= working_years ? tax_y(y, m) : 0.0
+
+                for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
+                    if j <= working_years
+                        shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, 1, t)
+                        shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, 1, t)
+                        prob_in  = shocks_in_prob(R, n, m, j, y, a_income, 1, t, past_in, past_out)
+                        prob_out = shocks_out_prob(R, n, m, j, y, a_income, 1, t, past_in, past_out)
+                    else
+                        shock_in_amount  = 0.0
+                        shock_out_amount = 0.0
+                        prob_in          = 0.0
+                        prob_out         = 0.0
+                    end
+
+                    shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
+                    shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
+                    transfer_in    = (shock_in  - 1) * shock_in_amount
+                    transfer_out   = (shock_out - 1) * shock_out_amount
+
+                    shock_resources_nc[j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        y - y_tax + transfer_in - transfer_out + a_next
+                    net_transfers_nc[j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        transfer_in - transfer_out
+                    prob_shocks_nc[j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        shock_in_prob * shock_out_prob
+                end
+            end
+        end
+    end
+
+    shock_resources_c = zeros(Float64, jpnts, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    net_transfers_c   = zeros(Float64, jpnts, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    prob_shocks_c     = zeros(Float64, jpnts, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+
+    for j in 1:jpnts, R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3
+        e_idx = e - 1
+        for i_a in 1:apnts_c
+            a = a_grid_college[i_a]
+            r = R == 1 ? ra_w : ra_b
+            if a >= 0
+                a_income = a * r
+                a_next   = a * (1 + r * (1 - tax_a))
+            else
+                a_income = 0.0
+                a_next   = a * (1 + r_loan)
+            end
+
+            for i_z in 1:zpnts
+                y     = y_values[R, j, m, e, i_z]
+                y_tax = j <= working_years ? tax_y(y, m) : 0.0
+
+                for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
+                    if j <= working_years
+                        shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, e, t)
+                        shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, e, t)
+                        prob_in  = shocks_in_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
+                        prob_out = shocks_out_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
+                    else
+                        shock_in_amount  = 0.0
+                        shock_out_amount = 0.0
+                        prob_in          = 0.0
+                        prob_out         = 0.0
+                    end
+
+                    shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
+                    shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
+                    transfer_in    = (shock_in  - 1) * shock_in_amount
+                    transfer_out   = (shock_out - 1) * shock_out_amount
+
+                    shock_resources_c[j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        y - y_tax + transfer_in - transfer_out + a_next
+                    net_transfers_c[j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        transfer_in - transfer_out
+                    prob_shocks_c[j, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                        shock_in_prob * shock_out_prob
+                end
+            end
+        end
+    end
 
     return (; tuition_2yr, tuition_4yr, r_loan,
               a_grid_nocollege, a_grid_college, school_a_grid, apnts_nc, apnts_c,
