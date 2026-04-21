@@ -4,7 +4,7 @@
 #prob_help = edu_transfer_prob(R, n, m, e, y, a_income, e, t, degree_choice)
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
-    (; beta, gamma, ra_w, ra_b, tasks_idx_c1, a_grid_nocollege, d_limit,
+    (; beta, gamma, ra_w, ra_b, tasks_idx_s1, a_grid_nocollege, d_limit,
        tuition_2yr, tuition_4yr, y_values, tax_a) = model
 
     fill!(Vsj_1, 0f0)
@@ -13,9 +13,9 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     vsjp1_itp = [LinearInterpolation((a_grid_nocollege), vsjp1[R, t_own, degree, :], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, t_own in fam_type, degree in 1:2]
 
-    @threads for idx in eachindex(tasks_idx_c1)
+    @threads for idx in eachindex(tasks_idx_s1)
         # Parent characteristics and starting asset for child
-       (R, m, t, e, i_a_p, i_a, i_z) = tasks_idx_c1[idx]
+       (R, m, t, e, i_a_p, i_a, i_z) = tasks_idx_s1[idx]
         
         r = R == 1 ? ra_w : ra_b
 
@@ -65,7 +65,7 @@ end
 
 function VSj_enrolled(vsjp1, vc1jp1, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,
-       tuition_2yr, tuition_4yr, tasks_idx_c) = model
+       tuition_2yr, tuition_4yr, tasks_idx_s2) = model
 
     fill!(Vsj, 0f0)
     fill!(PFsj, 0f0)
@@ -80,8 +80,8 @@ function VSj_enrolled(vsjp1, vc1jp1, model, j)
                for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
-    @threads for idx in eachindex(tasks_idx_c)
-       (R, t, degree, i_a) = tasks_idx_c[idx]
+    @threads for idx in eachindex(tasks_idx_s2)
+       (R, t, degree, i_a) = tasks_idx_s2[idx]
         
         a = a_grid_college[i_a]
         tuition = degree == 1 ? tuition_2yr : tuition_4yr
@@ -166,113 +166,48 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     fill!(PFj_c1, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    vc1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
-    if j < working_years
-        wc_itp = nothing
+    if j < fam_shock_period
+        vc2_itp = nothing
     else
-        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+        vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     end
 
 
     @threads for idx in eachindex(tasks_idx_c)
-        (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
-
-        vcjp1_itp = vc_itp[R, m, n, t, e-1, :, :, :, :]
-        if j < working_years
-            wcjp1_itp = nothing
-        else    
-            wcjp1_itp = wc_itp[R, m, n, t, e-1, :, :, :, :]
-        end
+        (R, t, degree, i_a, i_z) = tasks_idx_c[idx]
+        e = degree + 1  # maps degree choice to e (2 or 3)
+        vc1jp1_itp = vc1_itp[R, t, degree, :, :, :, :]
 
         # Lower bound: natural borrowing limit
-        lb = -d_limit[j, R, e-1]
+        lb = -d_limit[j, R, degree]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n,t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, 1, 1,t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j < fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVc1_jp1(model, vc1jp1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
-                          result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                     beta * EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
-            Vj_c1[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-            PFj_c1[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+            Vj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+            PFj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
         end
     end
     
     return Vj_c1, PFj_c1
 end
 
-
-function Vc2j_solve(vcjp1, wcjp1, Vj_c2, PFj_c2, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c, shock_resources_c, d_limit, fam_shock_period) = model
-
-    fill!(Vj_c2, 0f0)
-    fill!(PFj_c2, 0f0)
-
-    # When creating interpolation objects for Vj+1:
-    vc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-
-    if j < working_years
-        wc_itp = nothing
-    else
-        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-    end
-
-
-    @threads for idx in eachindex(tasks_idx_c)
-        (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
-
-        vcjp1_itp = vc_itp[R, m, n, t, e-1, :, :, :, :]
-        if j < working_years
-            wcjp1_itp = nothing
-        else    
-            wcjp1_itp = wc_itp[R, m, n, t, e-1, :, :, :, :]
-        end
-
-        # Lower bound: natural borrowing limit
-        lb = -d_limit[j, R, e-1]
-
-        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
-
-            net_resources = shock_resources_c[j, R, m, n,t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
-
-            if j == fam_shock_period
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
-
-            elseif j < working_years
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVc_jp1(model, vcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
-            else
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
-            end
-        
-            Vj_c2[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-            PFj_c2[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
-        end
-    end
-    
-    return Vj_c2, PFj_c2
-end
-
-# Expected family with no family transition
-function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVc1_jp1(model, vjp1, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
@@ -280,7 +215,145 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
     expected_value = 0.0
     for i_zp1 in 1:zpnts
         pi_z =Pimat[i_z, i_zp1]
-        y = y_values[R, j, m, t, e, i_z]
+        y = y_values[R, jp1, 1, t, e, i_zp1]
+        for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
+            # update past in and past out flags based on past flags and past shocks
+            if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 
+                continue  
+            end
+            if past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1 
+                continue 
+            end
+
+            # probability of shock in and shock out next period
+            shock_out_prob= shocks_out_prob(R,1,1,jp1,y, a_income, e, t, past_in-1, past_out-1)
+            shock_in_prob = shocks_in_prob(R,1,1,jp1,y, a_income, e, t, past_in-1, past_out-1)
+            if shock_in_next == 2
+                shock_in_next_prob = shock_in_prob
+            else
+                shock_in_next_prob = 1 - shock_in_prob
+            end
+            if shock_out_next == 2
+                shock_out_next_prob = shock_out_prob
+            else
+                shock_out_next_prob = 1 - shock_out_prob
+            end
+
+            # expected value contribution from next period state
+            expected_value += pi_z * shock_out_next_prob *  shock_in_next_prob* vjp1[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+        end
+    end
+
+    return expected_value
+end
+
+
+# Expected value with family transition
+function EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
+    (; Pimat, zpnts, y_values) = model
+    jp1 = j + 1
+    a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
+
+    outcomes = family_shock_probs[(R, e_college(e))]
+    expected_value = 0.0
+    for (m_next, n_next, t_next, prob_fam) in outcomes
+
+        for i_zp1 in 1:zpnts
+            pi_z =Pimat[i_z, i_zp1]
+            y = y_values[R, jp1, m_next, e, i_zp1]
+            for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
+                # update past in and past out flags based on past flags and past shocks
+                if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 || past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1
+                    continue  
+                end
+
+                # probability of shock in and shock out next period
+                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in -1, past_out-1)
+                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in-1, past_out-1)
+                if shock_in_next == 2
+                    shock_in_next_prob = shock_in_prob
+                else
+                    shock_in_next_prob = 1 - shock_in_prob
+                end
+                if shock_out_next == 2
+                    shock_out_next_prob = shock_out_prob
+                else
+                    shock_out_next_prob = 1 - shock_out_prob
+                end
+
+                # expected value contribution from next period state
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc2_itp[R, m_next, n_next, t_next, e, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+    
+            end
+        end
+    end
+
+    return expected_value
+end
+
+function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
+    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit) = model
+
+    fill!(Vj_c2, 0f0)
+    fill!(PFj_c2, 0f0)
+
+    # When creating interpolation objects for Vj+1:
+    vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+
+    if j < working_years
+        wc_itp = nothing
+    else
+        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+               for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    end
+
+
+    @threads for idx in eachindex(tasks_idx_c2)
+        (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
+        e = degree + 1
+        vc2jp1_itp = vc2_itp[R, m, n, t, degree, :, :, :, :]
+        if j < working_years
+            wcjp1_itp = nothing
+        else    
+            wcjp1_itp = wc_itp[R, m, m, t, degree, :, :, :, :]
+        end
+
+        # Lower bound: natural borrowing limit
+        lb = -d_limit[j, R, degree]
+
+        for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
+
+            net_resources = shock_resources_c[j, R, m, n,t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+
+            if j < working_years
+                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                     beta * EVc2_jp1(model, vc2jp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+            else
+                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                     beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+            end
+        
+            Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+            PFj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
+        end
+    end
+    
+    return Vj_c2, PFj_c2
+end
+
+# Expected family with no family transition
+function EVc2_jp1(model, vc2jp1_itp, j, R, m,n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
+    (; Pimat, zpnts, y_values) = model
+    jp1 = j + 1
+    a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
+
+    expected_value = 0.0
+    for i_zp1 in 1:zpnts
+        pi_z =Pimat[i_z, i_zp1]
+        y = y_values[R, jp1, m, t, e, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
             if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 
@@ -305,56 +378,13 @@ function EVc_jp1(model, vjp1, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, p
             end
 
             # expected value contribution from next period state
-            expected_value += pi_z * shock_out_next_prob *  shock_in_next_prob* vjp1[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+            expected_value += pi_z * shock_out_next_prob *  shock_in_next_prob* vc2jp1_itp[shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
         end
     end
 
     return expected_value
 end
 
-# Expected value with family transition
-function EVc_family_jp1(model, vc_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
-    jp1 = j + 1
-    a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
-
-    outcomes = family_shock_probs[(R, e_college(e))]
-    e_idx = e == 2 ? 1 : 2
-    expected_value = 0.0
-    for (m_next, n_next, t_next, prob_fam) in outcomes
-
-        for i_zp1 in 1:zpnts
-            pi_z =Pimat[i_z, i_zp1]
-            y = y_values[R, jp1, m_next, e_idx, i_zp1]
-            for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
-                # update past in and past out flags based on past flags and past shocks
-                if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 || past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1
-                    continue  
-                end
-
-                # probability of shock in and shock out next period
-                shock_out_prob= shocks_out_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in -1, past_out-1)
-                shock_in_prob = shocks_in_prob(R,n_next,m_next,jp1,y, a_income, e, t_next, past_in-1, past_out-1)
-                if shock_in_next == 2
-                    shock_in_next_prob = shock_in_prob
-                else
-                    shock_in_next_prob = 1 - shock_in_prob
-                end
-                if shock_out_next == 2
-                    shock_out_next_prob = shock_out_prob
-                else
-                    shock_out_next_prob = 1 - shock_out_prob
-                end
-
-                # expected value contribution from next period state
-                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc_itp[R, m_next, n_next, t_next, e, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
-    
-            end
-        end
-    end
-
-    return expected_value
-end
 
 
 ###############################################################################################
@@ -362,37 +392,41 @@ end
 ###############################################################################################
 
 function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
-    (; survival_risk, beta, gamma , shock_resources_c, a_grid_college, tasks_idx_c, jpnts, d_limit) = model
+    (; survival_risk, beta, gamma , shock_resources_c, a_grid_college, tasks_idx_c2, jpnts, d_limit) = model
 
     fill!(Wj_c, 0f0)
     fill!(WPFj_c, 0f0)
 
     # Create interpolation object
-    wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,   :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
-                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+                for R in Race, m in marital_status, n in 1:2, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
 
-    @threads for idx in eachindex(tasks_idx_c)
-        (R, m, n, t, e, i_a, i_z) = tasks_idx_c[idx]
+    @threads for idx in eachindex(tasks_idx_c2)
+        (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
+        if n > 2 || (m== 2 && n == 1)
+            continue  # Skip family sizes that don't exist in retirement phase
+        end
+        e = degree + 1
         sj = survival_risk[j, R]
-        wcjp1_itp = wc_itp[R, m, n, t,e-1, :, :, :, :]
+        wcjp1_itp = wc_itp[R, m, n, t,degree, :, :, :, :]
         
         # Lower bound: natural borrowing limit
         lb = -d_limit[j, R, e-1]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value
-                Wj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
-                WPFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
+                Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
+                WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, n, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             lb, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
-                Wj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
-                WPFj_c[R, m, n, t, e-1, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
+                Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
+                WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
             end
         end
     end
