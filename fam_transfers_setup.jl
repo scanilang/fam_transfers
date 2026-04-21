@@ -7,6 +7,7 @@ using DataFrames
 function oecd(m,n)
     # oecd equivalence scale (1 + 0.7(Adults - 1) + 0.5 kids)
     # m = `1 is married
+    m = m - 1
     # n family size`
     return (1 + 0.7(m) + 0.5(n-(m + 1)))
 end
@@ -24,6 +25,12 @@ end
 function u_hh(c,gamma, m,n)
     Val = ((c/oecd(m,n))^(1-gamma)) / (1-gamma)
     return n * Val
+end
+
+function c_floor(m, n)
+    # OECD-scaled consumption floor
+    c_floor_base = 5400.0  # floor for single adult, based on 2020 poverty line for single adult
+    return c_floor_base * oecd(m, n)
 end
 
 ###############################################################################################
@@ -247,7 +254,8 @@ function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     return exp(val)
 end
 
-function effective_transfer_out(c_floor, T_raw, y, y_tax, a_income_flow, transfer_in_realized)
+function effective_transfer_out(m,n, T_raw, y, y_tax, a_income_flow, transfer_in_realized)
+    floor = c_floor(m,n)
     # Own resources before choosing a' 
     own_resources = y - y_tax + a_income_flow + transfer_in_realized
     # Max feasible transfer leaves c_floor for consumption
