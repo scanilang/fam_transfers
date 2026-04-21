@@ -138,7 +138,7 @@ function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, 
 end
 
 function Vnc2_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
-    (; beta, gamma,a_grid_nocollege, tasks_idx_nc2, shock_resources_nc, z_grid, Race, marital_status, fam_size, fam_type) = model
+    (; beta, gamma,a_grid_nocollege, tasks_idx_nc2, shock_resources_nc, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
 
     fill!(Vj_nc2, 0f0)
     fill!(PFj_nc2, 0f0)
