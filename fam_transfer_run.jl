@@ -1,8 +1,8 @@
 using Base.Threads
 using Interpolations
-import Optim: optimize
+import Optim: optimize, Brent
 import QuantEcon: rouwenhorst
-import Roots: find_zero, Brent
+import Roots: find_zero
 import Distributions: cdf, Normal
 using Random
 import CSV

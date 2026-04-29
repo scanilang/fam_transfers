@@ -281,7 +281,7 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
                 WPFj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
                 result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWnc_jp1(model, wncjp1_itp, j, R, m, m,  t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                            0.0, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                            0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
             end
