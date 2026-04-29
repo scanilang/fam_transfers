@@ -166,21 +166,25 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
     fill!(PFj_c1, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-
     if j < fam_shock_period
         vc2_itp = nothing
+        vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        vc1jp1_itp = nothing
     end
 
 
     @threads for idx in eachindex(tasks_idx_c1)
         (R, t, degree, i_a, i_z) = tasks_idx_c1[idx]
         e = degree + 1  # maps degree choice to e (2 or 3)
-        vc1_itp = vc1jp1_itp[R, t, degree, :, :, :, :]
+        if j < fam_shock_period
+            vc1_itp = vc1jp1_itp[R, t, degree, :, :, :, :]
+        else            
+            vc1_itp = nothing
+        end
 
         # Lower bound: natural borrowing limit
         lb = -d_limit[j, R, degree]
@@ -298,25 +302,27 @@ function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
     fill!(PFj_c2, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+    if j < working_years
+        vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
            for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
 
-    if j < working_years
         wc_itp = nothing
     else
         wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        vc2_itp = nothing
     end
 
 
     @threads for idx in eachindex(tasks_idx_c2)
         (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
         e = degree + 1
-        vc2jp1_itp = vc2_itp[R, m, n, t, degree, :, :, :, :]
         if j < working_years
             wcjp1_itp = nothing
+            vc2jp1_itp = vc2_itp[R, m, n, t, degree, :, :, :, :]
         else    
             wcjp1_itp = wc_itp[R, m, m, t, degree, :, :, :, :]
+            vc2jp1_itp = nothing
         end
 
         # Lower bound: natural borrowing limit
@@ -398,9 +404,12 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
     fill!(WPFj_c, 0f0)
 
     # Create interpolation object
-    wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+    if j < jpnts
+        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
                 for R in Race, m in marital_status, n in 1:2, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-
+    else
+        wc_itp = nothing
+    end
 
     @threads for idx in eachindex(tasks_idx_c2)
         (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
@@ -409,7 +418,11 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
         end
         e = degree + 1
         sj = survival_risk[j-42, R]
-        wcjp1_itp = wc_itp[R, m, n, t,degree, :, :, :, :]
+        if j < jpnts
+            wcjp1_itp = wc_itp[R, m, n, t,degree, :, :, :, :]
+        else
+            wcjp1_itp = nothing
+        end 
         
         # Lower bound: natural borrowing limit
         lb = -d_limit[j, R, e-1]

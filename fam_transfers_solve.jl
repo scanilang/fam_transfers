@@ -34,7 +34,7 @@ function solve_model(model, savepath)
     PFj_nc2 = copy(Vj_nc2)
 
     W_ret_first = @view W_nc[1, :,:,:,:,:,:,:,:,:,:]
-    V_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:], PF_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:] = Vnc2j_solve(nothing, W_ret_first, Vj_nc2, PFj_nc2, model, n_nc2)
+    V_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:], PF_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:] = Vnc2j_solve(nothing, W_ret_first, Vj_nc2, PFj_nc2, model, working_years)
 
     for j in (working_years-1):-1:(fam_shock_period+1)
         idx = j - fam_shock_period
@@ -119,10 +119,10 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
     # Vsj dims: (j, R, t_own, degree, i_a_school) = 4 non-j
     n_school_periods = 3
-    Vsj  = zeros(Float32, n_school_periods, 2, 3, 2, apnts_c)
+    Vsj  = zeros(Float32, 2, 3, 2, apnts_c)
     PFsj = copy(Vsj)
 
-    Vs  = zeros(Float32, 2, 3, 2, apnts_c)
+    Vs  = zeros(Float32, n_school_periods, 2, 3, 2, apnts_c)
     PFs = copy(Vs)
 
     # j=4: last period for 4yr — graduate into Vc1[5]
@@ -130,19 +130,11 @@ function solve_model(model, savepath)
     Vs[3, :,:,:,:], PFs[3, :,:,:,:] = VSj_enrolled(nothing, Vc1_j3, Vsj, PFsj, model, 4)
 
     # j=3: 4yr still enrolled
-    Vs[2, :,:,:,:], PFs[2, :,:,:,:] = VSj_enrolled(
-        @view(Vs[3, :,:,:,:]),
-        nothing,
-        Vs[2, :,:,:,:], PFs[2, :,:,:,:],
-        model, 3)
+    Vs[2, :,:,:,:], PFs[2, :,:,:,:] = VSj_enrolled(@view(Vs[3, :,:,:,:]),nothing, Vsj, PFsj,model, 3)
 
     # j=2: 2yr graduates into Vc1[3]; 4yr still enrolled
     Vc1_j1 = @view Vj_c1[1, :,:,:,:,:,:,:,:,:]
-    Vs[1, :,:,:,:], PFs[1, :,:,:,:] = VSj_enrolled(
-        @view(Vs[2, :,:,:,:]),
-        Vc1_j1,
-        Vs[1, :,:,:,:], PFs[1, :,:,:,:],
-        model, 2)
+    Vs[1, :,:,:,:], PFs[1, :,:,:,:] = VSj_enrolled(@view(Vs[2, :,:,:,:]),Vc1_j1,Vsj, PFsj,model, 2)
 
     # j=1: first period
     # Vsj_1 dims: (R, m_p, t_parent, e_p, i_a_p, i_a, i_z_p, edu_shock, degree)

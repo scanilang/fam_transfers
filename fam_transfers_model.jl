@@ -3,8 +3,8 @@ function model_create(;
     beta = 0.96,
     r = 0.04,
     rb = 0.05,
-    ra_w = 6.09,
-    ra_b = 2.91,
+    ra_w = 0.0609,
+    ra_b = 0.0291,
     tuition_2yr = 5000.0, #yearly tuition cost for 2-year degree
     tuition_4yr = 15000.0, #yearly tuition cost for 4-year degree
     r_loan = 0.06,

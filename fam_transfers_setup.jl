@@ -33,6 +33,16 @@ function c_floor(m, n)
     return c_floor_base * oecd(m, n)
 end
 
+function polyexpandgrid(n, a, b, theta)
+
+    grid1 = collect(LinRange(0,1,n))
+    grid2 = repeat([0.0],n) 
+    for i in 1:n
+    grid2[i] = a + (b-a)*grid1[i]^theta
+    end
+    return grid2
+end
+
 ###############################################################################################
 # Income
 ###############################################################################################
@@ -57,13 +67,13 @@ function g( r,j,e, m)
     else
         g = β_white_income[1] + β_white_income[2]*age + β_white_income[3]*age^2 + β_white_income[4]*age^3 + β_white_income[5]*e_0 + β_white_income[6]*e_2 + β_white_income[7]*m + β_white_income[26]
     end
-    return g
+    return exp(g)
 end
 
 function tax_y(y, m)
     div_y = y/2
     
-    if m == 1
+    if m == 2 # mmarried
         lambda = 0.08
         tau_y = 0.115
     else 

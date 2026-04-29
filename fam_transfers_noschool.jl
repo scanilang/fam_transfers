@@ -13,20 +13,27 @@ function Vnc1j_solve(vnc1jp1, vnc2jp1, Vj_nc1, PFj_nc1, model, j)
     fill!(PFj_nc1, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vnc1jp1_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc1jp1[R, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    
 
     if j < fam_shock_period
         vnc2_itp = nothing
+        vnc1jp1_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc1jp1[R, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         vnc2_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc2jp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-      end
+        vnc1jp1_itp = nothing
+    end
 
     @threads for idx in eachindex(tasks_idx_nc1)
         (R, t, i_a, i_z) = tasks_idx_nc1[idx]
 
-        vnc1_itp = vnc1jp1_itp[R, t, :, :, :, :]
+        if j < fam_shock_period
+            vnc1_itp = vnc1jp1_itp[R, t, :, :, :, :]
+
+        else
+            vnc1_itp = nothing
+        end
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
@@ -244,10 +251,10 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
 
     # Create interpolation object
     if j < jpnts
-        wnc_itp = nothing
-    else
         wnc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
                 for R in Race, m in marital_status, n in 1:2, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    else
+        wnc_itp = nothing
     end
 
     @threads for idx in eachindex(tasks_idx_nc2)
