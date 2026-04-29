@@ -264,7 +264,7 @@ function effective_transfer_out(m,n, T_raw, y, y_tax, a_income_flow, transfer_in
     # Own resources before choosing a' 
     own_resources = y - y_tax + a_income_flow + transfer_in_realized
     # Max feasible transfer leaves c_floor for consumption
-    max_transfer = max(0.0, own_resources - c_floor)
+    max_transfer = max(0.0, own_resources - floor)
     return min(T_raw, max_transfer)
 end
 
@@ -272,7 +272,7 @@ end
 # Survival Probabilities
 ###############################################################################################
 # survival probabilities
-if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026/"
+if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     survival_risk_df = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
 else
     survival_risk_df = CSV.read("/users/4/canil007/bankruptcy/bankruptcy/Data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
@@ -339,7 +339,11 @@ end
 # Family Shock Proabilities
 ###############################################################################################
 # Load shock table
-fam_shock_df = CSV.read("data/family_shock_table.csv", DataFrame)
+if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
+    fam_shock_df = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/family_shock_table.csv", DataFrame; limit = 3)
+else
+    fam_shock_df = CSV.read("/users/4/canil007/bankruptcy/bankruptcy/Data/family_shock_table.csv", DataFrame; limit = 3)
+end
 
 # Build lookup: (R, e_college) -> vector of (m, n, t_idx, prob)
 t_map = Dict("low" => 1, "mid" => 2, "high" => 3)

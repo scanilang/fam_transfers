@@ -8,6 +8,7 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
 
     # --- Retirement W_nc ---
+    println("Solving No College Retirement...")
     # Dims: (j, R, m, n, t, i_a, i_z, shock_in, shock_out, past_in, past_out) = 10 non-j
     Wj_nc  = zeros(Float32, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
     WPFj_nc = copy(Wj_nc)
@@ -25,6 +26,7 @@ function solve_model(model, savepath)
     end
 
     # --- Post-family-shock working Vnc2 ---
+    println("Solving No College Post-Family-Shock Working...")
     # Dims: (j, R, m, n, t, i_a, i_z, shocks) = 10 non-j
     n_nc2 = working_years - fam_shock_period  # = 36
     V_nc2  = zeros(Float32, n_nc2, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
@@ -43,6 +45,7 @@ function solve_model(model, savepath)
     end
 
     # --- Pre-family-shock working Vnc1 ---
+    println("Solving No College Pre-Family-Shock Working...")
     # Dims: (j, R, t, i_a, i_z, shocks) = 8 non-j
     n_nc1 = fam_shock_period  # = 7
     Vj_nc1  = zeros(Float32, 2, 3, apnts_nc, zpnts, 2, 2, 2, 2)
@@ -64,6 +67,7 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
 
     # --- Retirement W_c ---
+    println("Solving College Retirement...")
     # Dims: (j, R, m, n, t, e_idx, i_a, i_z, shocks) = 11 non-j
     Wj_c  = zeros(Float32, n_retirement, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     WPFj_c = copy(Wj_c)
@@ -80,6 +84,7 @@ function solve_model(model, savepath)
     end
 
     # --- Post-family-shock college working Vc2 ---
+    println("Solving College Post-Family-Shock Working...")
     # Dims: (j, R, m, n, t, e_idx, i_a, i_z, shocks) = 11 non-j
     n_c2 = working_years - fam_shock_period  # = 36
     Vj_c2  = zeros(Float32, n_c2, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
@@ -98,6 +103,7 @@ function solve_model(model, savepath)
     end
 
     # --- Pre-family-shock college working Vc1 ---
+    println("Solving College Pre-Family-Shock Working...")
     # Dims: (j, R, t, degree, i_a, i_z, shocks) = 9 non-j
     n_c1 = fam_shock_period - 2  # = 7
     Vj_c1  = zeros(Float32, n_c1, 2, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
@@ -117,6 +123,7 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
     # SCHOOL PATH
     # -----------------------------------------------------------------------
+    println("Solving School Path...")
     # Vsj dims: (j, R, t_own, degree, i_a_school) = 4 non-j
     n_school_periods = 3
     Vsj  = zeros(Float32, 2, 3, 2, apnts_c)

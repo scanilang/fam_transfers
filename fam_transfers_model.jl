@@ -60,7 +60,7 @@ function model_create(;
         push!(tasks_idx_nc2, (R, m, n, t, i_a, i_z))
     end
 
-    tasks_idx_nc1 = Vector{NTuple{6, Int64}}()
+    tasks_idx_nc1 = Vector{NTuple{4, Int64}}()
     for R in Race, t in fam_type, i_a in 1:apnts_nc, i_z in 1:zpnts
         push!(tasks_idx_nc1, (R, t, i_a, i_z))
     end
@@ -70,7 +70,7 @@ function model_create(;
         push!(tasks_idx_c2, (R, m, n, t, degree, i_a, i_z))
     end
 
-    tasks_idx_c1 = Vector{NTuple{7, Int64}}()
+    tasks_idx_c1 = Vector{NTuple{5, Int64}}()
     for R in Race, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
         push!(tasks_idx_c1, (R, t, degree, i_a, i_z))
     end
