@@ -53,13 +53,13 @@ function Vnc1j_solve(vnc1jp1, vnc2jp1, Vj_nc1, PFj_nc1, model, j)
 end
 
 function EVnc1_jp1(model, vjp1, j, R, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
-        pi_z =Pimat[i_z, i_zp1]
+        pi_z =Pimat[R][i_z, i_zp1]
         y = y_values[R, jp1, 1, 1, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
@@ -95,7 +95,7 @@ end
 
 # Expected value with family transition
 function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
@@ -105,7 +105,7 @@ function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, 
     for (m_next, n_next, t_next, prob_fam) in outcomes
 
         for i_zp1 in 1:zpnts
-            pi_z =Pimat[i_z, i_zp1]
+            pi_z =Pimat[R][i_z, i_zp1]
             y = y_values[R, jp1, m_next, 1, i_zp1]
             for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
                 # update past in and past out flags based on past flags and past shocks
@@ -191,13 +191,13 @@ end
 
 # Expected family with no family transition
 function EVnc2_jp1(model, vjp1, j, R, m, n, t,ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
-        pi_z =Pimat[i_z, i_zp1]
+        pi_z =Pimat[R][i_z, i_zp1]
         y = y_values[R, jp1, m, 1, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
@@ -256,7 +256,7 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
             continue  # Skip family sizes that don't exist in retirement phase
         end
 
-        sj = survival_risk[j, R]
+        sj = survival_risk[j - 42, R]
         
         if j < jpnts
             wncjp1_itp = wnc_itp[R, m, m, t, :, :, :, :]
@@ -286,7 +286,7 @@ end
 
 function EWnc_jp1(model, wncjp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
 
-    (; y_values) = model
+    (; y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 

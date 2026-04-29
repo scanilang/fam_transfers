@@ -81,9 +81,9 @@ function model_create(;
     end
 
     # School task index — simple (R, t, i_a) only
-    tasks_idx_s2 = Vector{NTuple{3, Int64}}()
-    for R in Race, t in fam_type, i_a in 1:apnts_c
-        push!(tasks_idx_s2, (R, t, i_a))
+    tasks_idx_s2 = Vector{NTuple{4, Int64}}()
+    for R in Race, t in fam_type, degree in 1:2, i_a in 1:apnts_c
+        push!(tasks_idx_s2, (R, t, degree, i_a))
     end
 
     # Precompute y_values

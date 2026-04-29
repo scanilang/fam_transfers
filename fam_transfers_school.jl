@@ -64,7 +64,7 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
 end
 
 function VSj_enrolled(vsjp1, vc1jp1, Vsj, PFsj, model, j)
-    (; beta, gamma, r, r_loan, a_grid_college, d_limit,z_grid,
+    (; beta, gamma, r, r_loan, a_grid_college, d_limit,z_grid, working_years,
        tuition_2yr, tuition_4yr, tasks_idx_s2, Race, fam_type) = model
 
     fill!(Vsj, 0f0)
@@ -124,7 +124,7 @@ end
 # Value function for those that chose not to attend college
 # Positive assets only
 function EV_graduation(model, vc1jp1_itp, R, t, degree, ap1)
-    (; ra_w, ra_b, zpnts, z_grid, y_values) = model
+    (; ra_w, ra_b, zpnts, z_grid, y_values, ra_w, ra_b) = model
 
     e = degree + 1  # maps degree choice to e (2 or 3)
 
@@ -208,14 +208,14 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
 end
 
 function EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
-        pi_z =Pimat[i_z, i_zp1]
-        y = y_values[R, jp1, 1, t, e, i_zp1]
+        pi_z =Pimat[R][i_z, i_zp1]
+        y = y_values[R, jp1, 1, e, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
             if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 
@@ -250,7 +250,7 @@ end
 
 # Expected value with family transition
 function EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
@@ -259,7 +259,7 @@ function EV_family_jp1(model, vc2_itp, j, R, e, ap1, i_z, shock_in, shock_out, p
     for (m_next, n_next, t_next, prob_fam) in outcomes
 
         for i_zp1 in 1:zpnts
-            pi_z =Pimat[i_z, i_zp1]
+            pi_z =Pimat[R][i_z, i_zp1]
             y = y_values[R, jp1, m_next, e, i_zp1]
             for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
                 # update past in and past out flags based on past flags and past shocks
@@ -346,14 +346,14 @@ end
 
 # Expected family with no family transition
 function EVc2_jp1(model, vc2jp1_itp, j, R, m,n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)
-    (; Pimat, zpnts, y_values) = model
+    (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
         pi_z =Pimat[i_z, i_zp1]
-        y = y_values[R, jp1, m, t, e, i_zp1]
+        y = y_values[R, jp1, m, e, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
             if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 
@@ -408,7 +408,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
             continue  # Skip family sizes that don't exist in retirement phase
         end
         e = degree + 1
-        sj = survival_risk[j, R]
+        sj = survival_risk[j-42, R]
         wcjp1_itp = wc_itp[R, m, n, t,degree, :, :, :, :]
         
         # Lower bound: natural borrowing limit
@@ -436,12 +436,12 @@ end
 
 function EWc_jp1(model, wcjp1_itp, j, R, m, n, t, e,ap1, i_z, shock_in, shock_out, past_in, past_out)
 
-    (; y_values) = model
+    (; y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
 
     expected_value = 0.0
-    y = y_values[R, j, m, t, e, i_z]
+    y = y_values[R, j, m, e, i_z]
 
     for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
         if past_in == 2 && past_in_next == 1 || shock_in == 2 && past_in_next == 1 || past_out == 2 && past_out_next == 1 || shock_out == 2 && past_out_next == 1

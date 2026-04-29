@@ -166,11 +166,6 @@ end
 β_black_transfer_in = Tuple(transfer_amount.black_transfer_in)
 β_black_transfer_out  = Tuple(transfer_amount.black_transfer_out)
 β_white_transfer_out     = Tuple(transfer_amount.white_transfer_out)
-
-β_white_edu_probit_in   = Tuple(edu_transfer_probit.white_edu_probit_in)
-β_black_edu_probit_in   = Tuple(edu_transfer_probit.black_edu_probit_in)
-β_white_edu_transfer_in  = Tuple(edu_transfer_amount.white_edu_transfer_in)
-β_black_edu_transfer_in = Tuple(edu_transfer_amount.black_edu_transfer_in)
 ##################### Transfer out
 function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
@@ -182,7 +177,7 @@ function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     if r == 2 
         val = β_black_probit_out[1] + β_black_probit_out[2]*log(y) + β_black_probit_out[3]*log(a_income +1 ) + β_black_probit_out[4]*age +  
         β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_2 + β_black_probit_out[9]*m + 
-        β_black_probit_out[10]*f_1 + β_black_probit_out[11]*f_2  + β_black_probit_out[12]*past_in + β_black_probit_out[13]*past_out + β_white_probit_out[19]
+        β_black_probit_out[10]*f_1 + β_black_probit_out[11]*f_2  + β_black_probit_out[12]*past_in + β_black_probit_out[13]*past_out + β_black_probit_out[19]
     else
         val = β_white_probit_out[1] + β_white_probit_out[2]*log(y) + β_white_probit_out[3]*log(a_income +1 ) + β_white_probit_out[4]*age + 
         β_white_probit_out[5]*age^2 + β_white_probit_out[6]*n + β_white_probit_out[7]*e_0 + β_white_probit_out[8]*e_2 + β_white_probit_out[9]*m + 
@@ -222,11 +217,11 @@ function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
     m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
-        val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income) + β_black_probit_in[4]*age +  
+        val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income+1) + β_black_probit_in[4]*age +  
         β_black_probit_in[5]*age^2 + β_black_probit_in[6]*n + β_black_probit_in[7]*e_0 + β_black_probit_in[8]*e_2 + β_black_probit_in[9]*m + 
         β_black_probit_in[10]*f_1 + β_black_probit_in[11]*f_2  + β_black_probit_in[12]*past_in + β_black_probit_in[13]*past_out + β_white_probit_in[19]
     else
-        val = β_white_probit_in[1] + β_white_probit_in[2]*log(y) + β_white_probit_in[3]*log(a_income) + β_white_probit_in[4]*age + 
+        val = β_white_probit_in[1] + β_white_probit_in[2]*log(y) + β_white_probit_in[3]*log(a_income+1) + β_white_probit_in[4]*age + 
         β_white_probit_in[5]*age^2 + β_white_probit_in[6]*n + β_white_probit_in[7]*e_0 + β_white_probit_in[8]*e_2 + β_white_probit_in[9]*m + 
         β_white_probit_in[10]*f_1 + β_white_probit_in[11]*f_2 + β_white_probit_in[12]*past_in + β_white_probit_in[13]*past_out + β_white_probit_in[19]
     end
@@ -267,26 +262,24 @@ end
 # Survival Probabilities
 ###############################################################################################
 # survival probabilities
-if pwd() == "/Users/scanilang/Documents/econ/umn/bankruptcy/model/backwards induction"
-    survival_risk_df = CSV.read("/Users/scanilang/Documents/econ/umn/bankruptcy/model/Death_rate_by_age_race.csv", DataFrame; limit = 3)
+if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026/"
+    survival_risk_df = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
 else
     survival_risk_df = CSV.read("/users/4/canil007/bankruptcy/bankruptcy/Data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
 end
 
 survival_risk_df[(1:3),(2:3)] = survival_risk_df[(1:3),(2:3)] ./ 100000 # rate per 100,000
-survival_risk_df[(1:3),(2:3)] = 1 .- (1 .-survival_risk_df[(1:3),(2:3)]).^(1/4) # convert to quarterly death rates
 survival_risk = Matrix{Float64}(survival_risk_df[:, 2:3]) 
 
+survival_risk_full = ones(25, 3)
+survival_risk_full[1:4, 2] .= survival_risk[1, 1]
+survival_risk_full[1:4, 3] .= survival_risk[1, 2]
+survival_risk_full[5:14, 2] .= survival_risk[2, 1]
+survival_risk_full[5:14, 3] .= survival_risk[2, 2]
+survival_risk_full[15:25, 2] .= survival_risk[3, 1]
+survival_risk_full[15:25, 3] .= survival_risk[3, 2]
 
-survival_risk_full = ones(11, 3)
-survival_risk_full[121:140, 2] .= survival_risk[1, 1]
-survival_risk_full[121:140, 3] .= survival_risk[1, 2]
-survival_risk_full[141:180, 2] .= survival_risk[2, 1]
-survival_risk_full[141:180, 3] .= survival_risk[2, 2]
-survival_risk_full[181:200, 2] .= survival_risk[3, 1]
-survival_risk_full[181:200, 3] .= survival_risk[3, 2]
-
-survival_risk_full[121:200, 2:3] = 1 .- survival_risk_full[121:200, 2:3]
+survival_risk_full[1:25, 2:3] = 1 .- survival_risk_full[1:25, 2:3]
 
 survival_risk_full = survival_risk_full[:, 2:3]
 

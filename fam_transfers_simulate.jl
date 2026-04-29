@@ -44,7 +44,7 @@ function family_shock(model, R, e, t_parent, rng)
     return outcomes[end]  # fallback
 end
 
-function famtransfer_simulate(model, n_agents, random_seed)
+function famtransfer_simulate(model, n_agents, n_periods, random_seed)
     
     # Model Parameters
     (; Race, marital_status, fam_size, ed_type, fam_type, a_grid, z_grid, ra_w, ra_b, tax_y, tax_a, transfers_in_amount, transfers_out_amount, shocks_in_prob, shocks_out_prob) = model

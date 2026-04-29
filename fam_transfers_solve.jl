@@ -13,7 +13,7 @@ function solve_model(model, savepath)
     WPFj_nc = copy(Wj_nc)
 
     W_nc  = zeros(Float32, n_retirement, 2, 2, 5, 3, apnts_nc, zpnts, 2, 2, 2, 2)
-    WPF_nc = copy(Wj_nc)
+    WPF_nc = copy(W_nc)
 
     W_nc[n_retirement,  :,:,:,:,:,:,:,:,:,:], WPF_nc[n_retirement, :,:,:,:,:,:,:,:,:,:] = Wncj(nothing, Wj_nc, WPFj_nc, model, jpnts)
 
@@ -34,7 +34,7 @@ function solve_model(model, savepath)
     PFj_nc2 = copy(Vj_nc2)
 
     W_ret_first = @view W_nc[1, :,:,:,:,:,:,:,:,:,:]
-    V_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:], PF_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:] = Vnc2_solve(nothing, W_ret_first, Vj_nc2, PFj_nc2, model, n_nc2)
+    V_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:], PF_nc2[n_nc2, :,:,:,:,:,:,:,:,:,:] = Vnc2j_solve(nothing, W_ret_first, Vj_nc2, PFj_nc2, model, n_nc2)
 
     for j in (working_years-1):-1:(fam_shock_period+1)
         idx = j - fam_shock_period
@@ -107,8 +107,7 @@ function solve_model(model, savepath)
     PF_c1 = copy(V_c1)
 
     Vc2_first = @view V_c2[1, :,:,:,:,:,:,:,:,:,:,:]
-    V_c1[n_c1, :,:,:,:,:,:,:,:,:], 
-    PF_c1[n_c1, :,:,:,:,:,:,:,:,:] = 
+    V_c1[n_c1, :,:,:,:,:,:,:,:,:], PF_c1[n_c1, :,:,:,:,:,:,:,:,:] = 
         Vc1j_solve(nothing, Vc2_first, Vj_c1, PFj_c1, model, fam_shock_period)
 
     for j in (fam_shock_period-3):-1:1
