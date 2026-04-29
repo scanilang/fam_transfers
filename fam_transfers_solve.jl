@@ -1,4 +1,4 @@
-function solve_model(model)
+function solve_model(model, savepath)
     (; apnts_nc, apnts_c, zpnts, working_years, jpnts, fam_shock_period) = model
 
     n_retirement = jpnts - working_years
@@ -154,6 +154,20 @@ function solve_model(model)
     PFs_1 = copy(Vs_1)
 
     Vs_1, PFs_1 = VSj_first_period(@view(Vs[1, :,:,:,:]), Vs_1, PFs_1, model)
+
+    open(joinpath(savepath, "NoSchool.jls"), "w") do io
+            serialize(io, (Vj_nc1 = Vj_nc1, PFj_nc1 = PFj_nc1,
+        Vj_nc2 = Vj_nc2, PFj_nc2 = PFj_nc2,
+        Wj_nc  = Wj_nc,  WPFj_nc = WPFj_nc,))
+        end
+
+    open(joinpath(savepath, "School.jls"), "w") do io
+            serialize(io, (Vj_c1  = Vj_c1,  PFj_c1  = PFj_c1,
+        Vj_c2  = Vj_c2,  PFj_c2  = PFj_c2,
+        Wj_c   = Wj_c,   WPFj_c  = WPFj_c,
+        Vsj    = Vsj,    PFsj    = PFsj,
+        Vsj_1  = Vsj_1,  PFsj_1  = PFsj_1))
+        end
 
     return (
         Vj_nc1 = Vj_nc1, PFj_nc1 = PFj_nc1,
