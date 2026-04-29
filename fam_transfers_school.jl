@@ -5,7 +5,7 @@
 
 function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     (; beta, gamma, ra_w, ra_b, tasks_idx_s1, a_grid_nocollege, d_limit,
-       tuition_2yr, tuition_4yr, y_values, tax_a, Race, fam_type) = model
+        tuition_2yr, tuition_4yr, y_values, tax_a, Race, fam_type) = model
 
     fill!(Vsj_1, 0f0)
     fill!(PFsj_1, 0f0)
@@ -63,21 +63,21 @@ function VSj_first_period(vsjp1, Vsj_1, PFsj_1, model)
     return Vsj_1, PFsj_1
 end
 
-function VSj_enrolled(vsjp1, vc1jp1, model, j)
+function VSj_enrolled(vsjp1, vc1jp1, Vsj, PFsj, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,z_grid,
        tuition_2yr, tuition_4yr, tasks_idx_s2, Race, fam_type) = model
 
     fill!(Vsj, 0f0)
     fill!(PFsj, 0f0)
 
-    vsjp1_itp = [LinearInterpolation((a_grid_college), vsjp1[R, t, degree, :], extrapolation_bc=Interpolations.Flat()) 
-                                for R in Race, t in fam_type, degree in 1:2]
-
     if j < working_years
         vc1jp1_itp = nothing
+        vsjp1_itp = [LinearInterpolation((a_grid_college), vsjp1[R, t, degree, :], extrapolation_bc=Interpolations.Flat()) 
+                                for R in Race, t in fam_type, degree in 1:2]
     else
         vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        vsjp1_itp = nothing
     end
 
     @threads for idx in eachindex(tasks_idx_s2)

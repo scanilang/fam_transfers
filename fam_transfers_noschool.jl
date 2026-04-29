@@ -137,31 +137,34 @@ function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, 
     return expected_value
 end
 
-function Vnc2_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
+function Vnc2j_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
     (; beta, gamma,a_grid_nocollege, tasks_idx_nc2, shock_resources_nc, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
 
     fill!(Vj_nc2, 0f0)
     fill!(PFj_nc2, 0f0)
 
     # When creating interpolation objects for Vj+1:
-    vnc2jp1_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc2jp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
-           for R in Race, m in marital_status, n in fam_size, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-
+    
     if j < working_years
         wnc_itp = nothing
+        vnc2_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), vnc2jp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+           for R in Race, m in marital_status, n in fam_size, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         wnc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in 1:2, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-      end
+        vnc2_itp = nothing
+    end
 
     @threads for idx in eachindex(tasks_idx_nc2)
         (R, m, n, t, i_a, i_z) = tasks_idx_nc2[idx]
 
-        vnc2_itp = vnc2jp1_itp[R, m, n, t, :, :, :, :]
         if j < working_years
             wncjp1_itp = nothing
+            vnc2jp1_itp = vnc2_itp[R, m, n, t, :, :, :, :]
+
         else    
             wncjp1_itp = wnc_itp[R, m, m, t, :, :, :, :]
+            vnc2jp1_itp = nothing
         end
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
@@ -170,7 +173,7 @@ function Vnc2_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
 
             if j < working_years
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVnc2_jp1(model, vnc2_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVnc2_jp1(model, vnc2jp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
@@ -240,8 +243,12 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
     fill!(WPFj_nc, 0f0)
 
     # Create interpolation object
-    wnc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+    if j < jpnts
+        wnc_itp = nothing
+    else
+        wnc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wncjp1[R, m, n, t,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
                 for R in Race, m in marital_status, n in 1:2, t in fam_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+    end
 
     @threads for idx in eachindex(tasks_idx_nc2)
         (R, m, n, t, i_a, i_z) = tasks_idx_nc2[idx]
@@ -250,7 +257,12 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
         end
 
         sj = survival_risk[j, R]
-        wncjp1_itp = wnc_itp[R, m, m, t, :, :, :, :]
+        
+        if j < jpnts
+            wncjp1_itp = wnc_itp[R, m, m, t, :, :, :, :]
+        else
+            wncjp1_itp = nothing
+        end
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
