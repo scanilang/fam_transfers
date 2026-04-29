@@ -17,5 +17,6 @@ include("fam_transfers_school.jl")
 include("fam_transfers_solve.jl")
 include("fam_transfers_simulate.jl")
 
-model = model_create()
-solution = solve_model(model)
+model = model_create();
+savepath = "/Users/scanilang/Documents/econ/umn/family_transfers/value_policy/"
+solution = solve_model(model, savepath)
