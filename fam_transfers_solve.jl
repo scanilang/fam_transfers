@@ -71,12 +71,12 @@ function solve_model(model, savepath)
     W_c  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     WPF_c = copy(W_c)
 
-    W_c[n_retirement,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[n_retirement, :,:,:,:,:,:,:,:,:,:,:] = Wcj(nothing, Wj_nc, WPFj_nc, model, jpnts)
+    W_c[n_retirement,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[n_retirement, :,:,:,:,:,:,:,:,:,:,:] = Wcj(nothing, Wj_c, WPFj_c, model, jpnts)
 
     for j in (jpnts-1):-1:(working_years+1)
         idx = j - working_years
         W_jp1 = @view W_c[idx+1, :,:,:,:,:,:,:,:,:,:,:]
-        W_c[idx,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[idx, :,:,:,:,:,:,:,:,:,:,:] = Wcj(W_jp1, Wj_nc, WPFj_nc, model, j)
+        W_c[idx,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[idx, :,:,:,:,:,:,:,:,:,:,:] = Wcj(W_jp1, Wj_c, WPFj_c, model, j)
     end
 
     # --- Post-family-shock college working Vc2 ---
@@ -107,14 +107,11 @@ function solve_model(model, savepath)
     PF_c1 = copy(V_c1)
 
     Vc2_first = @view V_c2[1, :,:,:,:,:,:,:,:,:,:,:]
-    V_c1[n_c1, :,:,:,:,:,:,:,:,:], PF_c1[n_c1, :,:,:,:,:,:,:,:,:] = 
-        Vc1j_solve(nothing, Vc2_first, Vj_c1, PFj_c1, model, fam_shock_period)
+    V_c1[n_c1, :,:,:,:,:,:,:,:,:], PF_c1[n_c1, :,:,:,:,:,:,:,:,:] = Vc1j_solve(nothing, Vc2_first, Vj_c1, PFj_c1, model, fam_shock_period)
 
     for j in (fam_shock_period-3):-1:1
         V_jp1 = @view V_c1[j+1, :,:,:,:,:,:,:,:,:]
-        V_c1[j, :,:,:,:,:,:,:,:,:], 
-        PF_c1[j, :,:,:,:,:,:,:,:,:] = 
-            Vc1j_solve(V_jp1, nothing, Vj_c1, PFj_c1, model, j)
+        V_c1[j, :,:,:,:,:,:,:,:,:], PF_c1[j, :,:,:,:,:,:,:,:,:] = Vc1j_solve(V_jp1, nothing, Vj_c1, PFj_c1, model, j)
     end
 
     # -----------------------------------------------------------------------
