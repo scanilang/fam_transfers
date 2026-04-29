@@ -112,9 +112,9 @@ function edu_transfer_prob(R, m, n, y, a_income, e, t, degree_choice)
     is_4yr     = degree_choice == 2 ? 0 : 1
     e_0 = e == 1 ? 1 : 0   # No College
     e_2 = e == 2 ? 1 : 0   # Some College
-    m_single = m == 1 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0   # both_low
-    f_2 = t == 2 ? 1 : 0   # both_mid
+    m = m - 1  # married=2 becomes 1, single=1 becomes 0
+    f_2 = t == 2 ? 1 : 0   # both_low
+    f_3 = t == 3 ? 1 : 0   # both_mid
 
     val = β_edu_probit[1] +                    # intercept
           β_edu_probit[2] * log(y + 1) +        # log_nonasset_income
@@ -123,9 +123,9 @@ function edu_transfer_prob(R, m, n, y, a_income, e, t, degree_choice)
           β_edu_probit[5] * n +                 # Family_Unit_Size
           β_edu_probit[6] * e_0 +               # Head_CollegeNo College
           β_edu_probit[7] * e_2 +               # Head_CollegeSome College
-          β_edu_probit[8] * m_single +           # Marital_StatusSingle
-          β_edu_probit[9] * f_1 +               # family_typeboth_low
-          β_edu_probit[10] * f_2 +              # family_typeboth_mid
+          β_edu_probit[8] * m +                 # Marital_StatusMarried
+          β_edu_probit[9] * f_2 +               # family_typemid
+          β_edu_probit[10] * f_3 +              # family_typehigh
           β_edu_probit[11] * race_white          # Race_HeadWhite
           # [13] and [14] enroll_era — omitted, set to reference category
 
@@ -181,17 +181,17 @@ function shocks_out_prob(r, n, m, j, y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
     e_0 = e == 1 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
     m = m - 1  # married=2 becomes 1, single=1 becomes 0
     if r == 2 
         val = β_black_probit_out[1] + β_black_probit_out[2]*log(y) + β_black_probit_out[3]*log(a_income +1 ) + β_black_probit_out[4]*age +  
         β_black_probit_out[5]*age^2 + β_black_probit_out[6]*n + β_black_probit_out[7]*e_0 + β_black_probit_out[8]*e_2 + β_black_probit_out[9]*m + 
-        β_black_probit_out[10]*f_1 + β_black_probit_out[11]*f_2  + β_black_probit_out[12]*past_in + β_black_probit_out[13]*past_out + β_black_probit_out[19]
+        β_black_probit_out[10]*f_2 + β_black_probit_out[11]*f_3  + β_black_probit_out[12]*past_in + β_black_probit_out[13]*past_out + β_black_probit_out[19]
     else
         val = β_white_probit_out[1] + β_white_probit_out[2]*log(y) + β_white_probit_out[3]*log(a_income +1 ) + β_white_probit_out[4]*age + 
         β_white_probit_out[5]*age^2 + β_white_probit_out[6]*n + β_white_probit_out[7]*e_0 + β_white_probit_out[8]*e_2 + β_white_probit_out[9]*m + 
-        β_white_probit_out[10]*f_1 + β_white_probit_out[11]*f_2  + β_white_probit_out[12]*past_in + β_white_probit_out[13]*past_out + β_white_probit_out[19]
+        β_white_probit_out[10]*f_2 + β_white_probit_out[11]*f_3  + β_white_probit_out[12]*past_in + β_white_probit_out[13]*past_out + β_white_probit_out[19]
     end
 
     return cdf(Normal(), val)
@@ -201,18 +201,18 @@ function transfers_out_amount(r,n,m, j, y, a_income, e, t)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
     e_0 = e == 1 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
     m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_transfer_out[1] + β_black_transfer_out[2]*log(y) + β_black_transfer_out[3]*log(a_income +1 ) + β_black_transfer_out[4]*age + 
         β_black_transfer_out[5]*age^2 + β_black_transfer_out[6]*n + β_black_transfer_out[7]*e_0 + β_black_transfer_out[8]*e_2 + β_black_transfer_out[9]*m + 
-        β_black_transfer_out[10]*f_1 + β_black_transfer_out[11]*f_2  + β_black_transfer_out[13]
+        β_black_transfer_out[10]*f_2 + β_black_transfer_out[11]*f_3  + β_black_transfer_out[13]
     else
         val = β_white_transfer_out[1] + β_white_transfer_out[2]*log(y) + β_white_transfer_out[3]*log(a_income +1 ) + β_white_transfer_out[4]*age + 
         β_white_transfer_out[5]*age^2 + β_white_transfer_out[6]*n + β_white_transfer_out[7]*e_0 + β_white_transfer_out[8]*e_2 + β_white_transfer_out[9]*m + 
-        β_white_transfer_out[10]*f_1 + β_white_transfer_out[11]*f_2 + β_white_transfer_out[13]
+        β_white_transfer_out[10]*f_2 + β_white_transfer_out[11]*f_3  + β_white_transfer_out[13]
     end
     return exp(val)
 end
@@ -222,18 +222,18 @@ function shocks_in_prob(r,n,m,j,y, a_income, e, t, past_in, past_out)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
     e_0 = e == 1 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
     m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_probit_in[1] + β_black_probit_in[2]*log(y) + β_black_probit_in[3]*log(a_income+1) + β_black_probit_in[4]*age +  
         β_black_probit_in[5]*age^2 + β_black_probit_in[6]*n + β_black_probit_in[7]*e_0 + β_black_probit_in[8]*e_2 + β_black_probit_in[9]*m + 
-        β_black_probit_in[10]*f_1 + β_black_probit_in[11]*f_2  + β_black_probit_in[12]*past_in + β_black_probit_in[13]*past_out + β_white_probit_in[19]
+        β_black_probit_in[10]*f_2 + β_black_probit_in[11]*f_3  + β_black_probit_in[12]*past_in + β_black_probit_in[13]*past_out + β_white_probit_in[19]
     else
         val = β_white_probit_in[1] + β_white_probit_in[2]*log(y) + β_white_probit_in[3]*log(a_income+1) + β_white_probit_in[4]*age + 
         β_white_probit_in[5]*age^2 + β_white_probit_in[6]*n + β_white_probit_in[7]*e_0 + β_white_probit_in[8]*e_2 + β_white_probit_in[9]*m + 
-        β_white_probit_in[10]*f_1 + β_white_probit_in[11]*f_2 + β_white_probit_in[12]*past_in + β_white_probit_in[13]*past_out + β_white_probit_in[19]
+        β_white_probit_in[10]*f_2 + β_white_probit_in[11]*f_3  + β_white_probit_in[12]*past_in + β_white_probit_in[13]*past_out + β_white_probit_in[19]
     end
 
     return cdf(Normal(), val)
@@ -243,18 +243,18 @@ function transfers_in_amount(r,n,m,j,y, a_income, e, t)
     age = j + 17
     e_2 = e == 2 ? 1 : 0
     e_0 = e == 1 ? 1 : 0
-    f_1 = t == 1 ? 1 : 0
     f_2 = t == 2 ? 1 : 0
+    f_3 = t == 3 ? 1 : 0
     m = m - 1  # married=2 becomes 1, single=1 becomes 0
 
     if r == 2 
         val = β_black_transfer_in[1] + β_black_transfer_in[2]*log(y) + β_black_transfer_in[3]*log(a_income +1 ) + β_black_transfer_in[4]*age + 
         β_black_transfer_in[5]*age^2 + β_black_transfer_in[6]*n + β_black_transfer_in[7]*e_0 + β_black_transfer_in[8]*e_2 + β_black_transfer_in[9]*m + 
-        β_black_transfer_in[10]*f_1 + β_black_transfer_in[11]*f_2  + β_black_transfer_in[13]
+        β_black_transfer_in[10]*f_2 + β_black_transfer_in[11]*f_3  + β_black_transfer_in[13]
     else
         val = β_white_transfer_in[1] + β_white_transfer_in[2]*log(y) + β_white_transfer_in[3]*log(a_income +1 ) + β_white_transfer_in[4]*age + 
         β_white_transfer_in[5]*age^2 + β_white_transfer_in[6]*n + β_white_transfer_in[7]*e_0 + β_white_transfer_in[8]*e_2 + β_white_transfer_in[9]*m + 
-        β_white_transfer_in[10]*f_1 + β_white_transfer_in[11]*f_2  + β_white_transfer_in[13]
+        β_white_transfer_in[10]*f_2 + β_white_transfer_in[11]*f_3  + β_white_transfer_in[13]
     end
     return exp(val)
 end

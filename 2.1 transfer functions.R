@@ -86,8 +86,13 @@ white_transfer_in = lm(log_transfer_in ~ log_nonasset_income + log_asset_income 
                       data = psid_clean %>% filter(Race_Head == "White") %>%  filter(Received_Support_Indicator == 1))
 summary(white_transfer_in)
 
-stargazer(white_transfer_out, black_transfer_out, white_transfer_in, black_transfer_in,
-          type = "text" )
+stargazer(white_transfer_out, black_transfer_out)
+stargazer(white_transfer_in, black_transfer_in)
+
+stargazer(white_transfer_out, black_transfer_out, 
+          white_transfer_in, black_transfer_in,
+          omit.stat = c("f", "ser"),
+          type = "text")
 
 #######################################################################################
 # Export Results

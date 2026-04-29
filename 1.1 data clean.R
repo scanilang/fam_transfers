@@ -346,10 +346,11 @@ write.csv(psid_clean, "../data/psid_clean.csv")
 
 threshold_y = psid_clean %>% 
   mutate(y_star = Total_NonAsset_Income + Total_Asset_Income,
-         log_y_star = log(y_star + 1)) 
+         log_y_star = log(y_star + 1)) %>% 
+  filter(!is.na(log_y_star))
 
-θ_low  <- Hmisc::wtd.quantile(psid_clean$log_y_star, weights = psid_clean$weight, probs = 0.35)
-θ_high <- Hmisc::wtd.quantile(psid_clean$log_y_star, weights = psid_clean$weight, probs = 0.81)
+θ_low  <- quantile(threshold_y$log_y_star, probs = 0.30)
+θ_high <- quantile(threshold_y$log_y_star, probs = 0.80)
 
 # 
 # View(psid_clean %>% select(ER30001, ER30002, Survey_Year, Marital_Status, Youngest_in_FU, Num_Children_FU, Number_Dependent_Outside_FU, Provided_ChildSupport_Amount_Head_Spouse, Provided_Alimony_Amount_Head_Spouse,

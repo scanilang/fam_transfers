@@ -14,7 +14,8 @@ psid_edu = read.csv('../data/psid_edu.csv') %>%
          Marital_Status = factor(Marital_Status,
                                  levels = c("Single", "Married")),
          family_type = factor(family_type,
-                              levels = c("low", "mid", "high")))
+                              levels = c("low", "mid", "high"))) %>% 
+  filter(Marital_Status %in% c("Single", "Married"))
 
 
 #################################################################################################################################
@@ -77,7 +78,7 @@ summary(pooled_probit_edu)
 
 pooled_transfer_edu <- lm(
   log_educ_exp ~ log_nonasset_income + log_asset_income +
-    Head_College  + degree_type_final + enroll_era + 
+    Head_College  + degree_type_final + enroll_era +
     Race_Head,
   data = psid_edu %>% filter(Help_School_Indicator == 1,
                              degree_type_final %in% c("2yr", "4yr"), Marital_Status %in% c("Married", "Single"),
