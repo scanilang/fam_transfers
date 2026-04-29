@@ -50,7 +50,7 @@ if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     income_results = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/income_results.csv", DataFrame)
 else
 
-    income_results = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/income_results.csv", DataFrame)
+    income_results = CSV.read("/users/4/canil007/family_transfers/Data/income_results.csv", DataFrame)
 end
 
 β_black_income   = Tuple(income_results.black_income_process)
@@ -94,10 +94,10 @@ if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     edu_transfer_probit = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/edu_transfer_probit_results.csv", DataFrame)
     edu_transfer_amount = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/edu_transfer_amount_results.csv", DataFrame)
 else
-    transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_probit_results.csv", DataFrame)
-    transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/transfer_amount_results.csv", DataFrame)
-    edu_transfer_probit = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_probit_results.csv", DataFrame)
-    edu_transfer_amount = CSV.read("/users/4/canil007/bankruptcy/family_transfers/Data/edu_transfer_amount_results.csv", DataFrame)
+    transfer_probit = CSV.read("/users/4/canil007/family_transfers/Data/transfer_probit_results.csv", DataFrame)
+    transfer_amount = CSV.read("/users/4/canil007/family_transfers/Data/transfer_amount_results.csv", DataFrame)
+    edu_transfer_probit = CSV.read("/users/4/canil007/family_transfers/Data/edu_transfer_probit_results.csv", DataFrame)
+    edu_transfer_amount = CSV.read("/users/4/canil007/family_transfers/Data/edu_transfer_amount_results.csv", DataFrame)
 end
 
 ###############################################################################################
@@ -275,7 +275,7 @@ end
 if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     survival_risk_df = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
 else
-    survival_risk_df = CSV.read("/users/4/canil007/bankruptcy/bankruptcy/Data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
+    survival_risk_df = CSV.read("/users/4/canil007/family_transfers/Data/Death_rate_by_age_race.csv", DataFrame; limit = 3)
 end
 
 survival_risk_df[(1:3),(2:3)] = survival_risk_df[(1:3),(2:3)] ./ 100000 # rate per 100,000
