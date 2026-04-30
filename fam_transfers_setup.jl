@@ -296,21 +296,23 @@ survival_risk_full = survival_risk_full[:, 2:3]
 ###############################################################################################
 # Natural Borrowing Limit
 ###############################################################################################
-function compute_borrowing_limit(z_grid, r_loan, jpnts, R, e, phi)
-    z_min  = z_grid[R][1]          # lowest productivity draw z̄
-    j_grad = e == 2 ? 3 : 5        # 2yr graduates j=3, 4yr graduates j=5
+function compute_borrowing_limit(z_grid, r_loan, jpnts, R, e, phi, working_years)
+    z_min  = z_grid[R][1]
+    j_grad = e == 2 ? 3 : 5
 
-    # chi[j] = PV of minimum future earnings from j onward
-    chi = zeros(jpnts + 1)          # chi[jpnts+1] = 0 (terminal)
+    chi = zeros(jpnts + 1)
     for j in jpnts:-1:1
         y_min  = j >= j_grad ? g(R, j, e, 1) * z_min : 0.0
         chi[j] = y_min + chi[j + 1] / (1 + r_loan)
     end
 
-    # Borrowing limit: phi * PV of next period's earnings stream
     d_limit = zeros(jpnts)
     for j in 1:jpnts
-        d_limit[j] = phi * chi[j + 1] / (1 + r_loan)
+        if j <= working_years
+            d_limit[j] = phi * chi[j + 1] / (1 + r_loan)
+        else
+            d_limit[j] = 0.0   # no borrowing in retirement
+        end
     end
 
     return d_limit

@@ -401,21 +401,21 @@ end
 ###############################################################################################
 
 function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
-    (; survival_risk, beta, gamma , shock_resources_c, z_grid, a_grid_college, tasks_idx_c2, jpnts, d_limit, Race, marital_status, fam_type) = model
+    (; survival_risk, beta, gamma , shock_resources_cr, z_grid, a_grid_nocollege, tasks_idx_nc2, jpnts, Race, marital_status, fam_type) = model
 
     fill!(Wj_c, 0f0)
     fill!(WPFj_c, 0f0)
 
     # Create interpolation object
     if j < jpnts
-        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, degree,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+        wc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wcjp1[R, m, n, t, degree,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
                 for R in Race, m in marital_status, n in 1:2, t in fam_type, degree in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         wc_itp = nothing
     end
 
-    @threads for idx in eachindex(tasks_idx_c2)
-        (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
+    @threads for idx in eachindex(tasks_idx_nc2)
+        (R, m, n, t, degree, i_a, i_z) = tasks_idx_nc2[idx]
         if n > 2 || (m== 2 && n == 1)
             continue  # Skip family sizes that don't exist in retirement phase
         end
@@ -428,11 +428,11 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
         end 
         
         # Lower bound: natural borrowing limit
-        lb = -d_limit[j, R, e-1]
+        lb = 0.0
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_cr[j, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value

@@ -6,7 +6,7 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
     # NO COLLEGE PATH
     # -----------------------------------------------------------------------
-   #if !isfile(joinpath(savepath, "NoSchool.jls")) 
+    if !isfile(joinpath(savepath, "NoSchool.jls")) 
         
         # --- Retirement W_nc ---
         println("Solving No College Retirement...")
@@ -68,7 +68,7 @@ function solve_model(model, savepath)
             V_nc2 = V_nc2, PF_nc2 = PF_nc2,
             W_nc  = W_nc,  WPF_nc = WPF_nc))
             end
-    #end
+    end
 
     # -----------------------------------------------------------------------
     # COLLEGE PATH
@@ -77,10 +77,10 @@ function solve_model(model, savepath)
     # --- Retirement W_c ---
     println("Solving College Retirement...")
     # Dims: (j, R, m, n, t, e_idx, i_a, i_z, shocks) = 11 non-j
-    Wj_c  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    Wj_c  = zeros(Float32, 2, 2, 5, 3, 2, apnts_nc, zpnts, 2, 2, 2, 2)
     WPFj_c = copy(Wj_c)
 
-    W_c  = zeros(Float32, n_retirement,2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    W_c  = zeros(Float32, n_retirement,2, 2, 5, 3, 2, apnts_nc, zpnts, 2, 2, 2, 2)
     WPF_c = copy(W_c)
 
     W_c[n_retirement,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[n_retirement, :,:,:,:,:,:,:,:,:,:,:] = Wcj(nothing, Wj_c, WPFj_c, model, jpnts)
