@@ -66,7 +66,7 @@ function solve_model(model, savepath)
         open(joinpath(savepath, "NoSchool.jls"), "w") do io
                 serialize(io, (Vj_nc1 = Vj_nc1, PFj_nc1 = PFj_nc1,
             Vj_nc2 = Vj_nc2, PFj_nc2 = PFj_nc2,
-            Wj_nc  = Wj_nc,  WPFj_nc = WPFj_nc,))
+            Wj_nc  = Wj_nc,  WPFj_nc = WPFj_nc))
             end
     end
 
@@ -77,10 +77,10 @@ function solve_model(model, savepath)
     # --- Retirement W_c ---
     println("Solving College Retirement...")
     # Dims: (j, R, m, n, t, e_idx, i_a, i_z, shocks) = 11 non-j
-    Wj_c  = zeros(Float32, n_retirement, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    Wj_c  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     WPFj_c = copy(Wj_c)
 
-    W_c  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    W_c  = zeros(Float32, n_retirement,2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     WPF_c = copy(W_c)
 
     W_c[n_retirement,  :,:,:,:,:,:,:,:,:,:,:], WPF_c[n_retirement, :,:,:,:,:,:,:,:,:,:,:] = Wcj(nothing, Wj_c, WPFj_c, model, jpnts)
@@ -174,6 +174,6 @@ function solve_model(model, savepath)
         Vj_c2  = Vj_c2,  PFj_c2  = PFj_c2,
         Wj_c   = Wj_c,   WPFj_c  = WPFj_c,
         Vsj    = Vsj,    PFsj    = PFsj,
-        Vsj_1  = Vsj_1,  PFsj_1  = PFsj_1,
+        Vsj_1  = Vsj_1,  PFsj_1  = PFsj_1
     )
 end

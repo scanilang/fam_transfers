@@ -408,8 +408,8 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
     # Create interpolation object
     if j < jpnts
-        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
-                for R in Race, m in marital_status, n in 1:2, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, degree,  :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat())
+                for R in Race, m in marital_status, n in 1:2, t in fam_type, degree in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
     else
         wc_itp = nothing
     end

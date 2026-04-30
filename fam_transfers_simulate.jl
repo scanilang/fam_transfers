@@ -211,9 +211,27 @@ function get_itp_function(model, j, savepath)
 
     (; Race, fam_type, z_grid, marital_status, fam_size, ed_type, a_grid, d_grid) = model
 
-    data = open(deserialize, joinpath(savepath, "File_7_age_$(j).jls"));
-    Vj = data.Vj;
-    PFj = data.PFj;
+    noschool_data = open(deserialize, joinpath(savepath, "NoSchool$(j).jls"));
+    Vj_nc1 = noschool_data.Vj_nc1
+    PFj_nc1 = noschool_data.PFj_nc1
+    Vj_nc2 = noschool_data.Vj_nc2
+    PFj_nc2 = noschool_data.PFj_nc2
+    Wj_nc  = noschool_data.Wj_nc
+    WPFj_nc = noschool_data.WPFj_nc
+
+    school_data = open(deserialize, joinpath(savepath, "School$(j).jls"));
+
+    Vj_c1  = school_data.Vj_c1  
+    PFj_c1  = school_data.PFj_c1
+    Vj_c2  = school_data.Vj_c2
+    PFj_c2  = school_data.PFj_c2
+    Wj_c   = school_data.Wj_c
+    WPFj_c  = school_data.WPFj_c
+    Vsj    = school_data.Vsj
+    PFsj    = school_data.PFsj
+    Vsj_1  = school_data.Vsj_1
+    PFsj_1  = school_data.PFsj_1
+    
 
     vj_itp = [LinearInterpolation((a_grid, z_grid[R]), Vj[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Interpolations.Flat()) 
                                 for R in Race, m in marital_status, n in fam_size, t in fam_type, e in ed_type, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2];
