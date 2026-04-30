@@ -42,7 +42,7 @@ function model_create(;
     d_limit = zeros(jpnts, 2, 2)
     for R in Race, e in [2, 3]
         e_idx = e - 1
-        d_limit[:, R, e_idx] = compute_borrowing_limit(z_grid, r_loan, jpnts, R, e, phi)
+        d_limit[:, R, e_idx] = compute_borrowing_limit(z_grid, r_loan, jpnts, R, e, phi, working_years)
     end
 
     max_debt = maximum(d_limit)
