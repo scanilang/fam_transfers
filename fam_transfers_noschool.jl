@@ -46,7 +46,7 @@ function Vnc1j_solve(vnc1jp1, vnc2jp1, Vj_nc1, PFj_nc1, model, j)
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
-                     beta * EVnc_family_jp1(model, vnc2_itp, j, R, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                     beta * EVnc_family_jp1(model, vnc2_itp, j, R, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
  
             end
@@ -101,7 +101,7 @@ end
 
 
 # Expected value with family transition
-function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, past_in, past_out)
+function EVnc_family_jp1(model, vnc2_itp, j, R, t, ap1, i_z, shock_in, shock_out, past_in, past_out)
     (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
@@ -110,6 +110,9 @@ function EVnc_family_jp1(model, vnc2_itp, j, R,  ap1, i_z, shock_in, shock_out, 
 
     expected_value = 0.0
     for (m_next, n_next, t_next, prob_fam) in outcomes
+        if t_next !== t
+            continue
+        end
 
         for i_zp1 in 1:zpnts
             pi_z =Pimat[R][i_z, i_zp1]
