@@ -401,10 +401,13 @@ end
 ###############################################################################################
 
 function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
-    (; survival_risk, beta, gamma , shock_resources_cr, z_grid, a_grid_nocollege, tasks_idx_nc2, jpnts, Race, marital_status, fam_type) = model
+    (; survival_risk, beta, gamma , working_years,shock_resources_cr, z_grid, a_grid_nocollege, 
+    tasks_idx_nc2, jpnts, Race, marital_status, fam_type) = model
 
     fill!(Wj_c, 0f0)
     fill!(WPFj_c, 0f0)
+
+    j_ret = j - working_years
 
     # Create interpolation object
     if j < jpnts
@@ -420,7 +423,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
             continue  # Skip family sizes that don't exist in retirement phase
         end
         e = degree + 1
-        sj = survival_risk[j-42, R]
+        sj = survival_risk[j_ret, R]
         if j < jpnts
             wcjp1_itp = wc_itp[R, m, n, t,degree, :, :, :, :]
         else
@@ -432,7 +435,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_cr[j, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_cr[j_ret, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j == jpnts
                 # Last period of life, no future value

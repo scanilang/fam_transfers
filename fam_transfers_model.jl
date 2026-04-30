@@ -146,7 +146,7 @@ function model_create(;
     shock_resources_c  = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c,  zpnts, 2, 2, 2, 2)
     net_transfers_c    = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c,  zpnts, 2, 2, 2, 2)
     prob_shocks_c      = zeros(Float64, working_years, 2, 2, 5, 3, 2, apnts_c,  zpnts, 2, 2, 2, 2)
-    shock_resources_cr = zeros(Float64, n_retirement, 2, 2, 5, 3, 2, apnts_nc, zpnts)  # no shock dims needed
+    shock_resources_cr = zeros(Float64, n_retirement, 2, 2, 5, 3, 2, apnts_nc, zpnts, 2, 2, 2, 2)
 
     for j in 1:jpnts, R in Race, m in marital_status, n in fam_size, t in fam_type, e in 2:3
         e_idx = e - 1
@@ -184,14 +184,28 @@ function model_create(;
                 end
             end
         else
-            # Retirement — non-negative grid, no transfers or taxes, no shock variation
             j_ret = j - working_years
             for i_a in 1:apnts_nc
-                a      = a_grid_nocollege[i_a]
-                a_next = a * (1 + r * (1 - tax_a))
+                a        = a_grid_nocollege[i_a]
+                a_income = a * r
+                a_next   = a * (1 + r * (1 - tax_a))
                 for i_z in 1:zpnts
-                    y = y_values[R, working_years, m, e, i_z] * 0.4
-                    shock_resources_cr[j_ret, R, m, n, t, e_idx, i_a, i_z] = y + a_next
+                    y = y_values[R, working_years, m, e, i_z] * 0.4  # social security
+                    for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
+                        prob_in  = shocks_in_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
+                        prob_out = shocks_out_prob(R, n, m, j, y, a_income, e, t, past_in, past_out)
+                        shock_in_amount  = transfers_in_amount(R, n, m, j, y, a_income, e, t)
+                        shock_out_amount = transfers_out_amount(R, n, m, j, y, a_income, e, t)
+
+                        shock_in_prob  = shock_in  == 2 ? prob_in  : 1 - prob_in
+                        shock_out_prob = shock_out == 2 ? prob_out : 1 - prob_out
+                        transfer_in    = (shock_in  - 1) * shock_in_amount
+                        shock_out_effective = effective_transfer_out(m, n, shock_out_amount, y, 0.0, a_income, transfer_in)
+                        transfer_out   = (shock_out - 1) * shock_out_effective
+
+                        shock_resources_cr[j_ret, R, m, n, t, e_idx, i_a, i_z, shock_in, shock_out, past_in, past_out] =
+                            y + transfer_in - transfer_out + a_next
+                    end
                 end
             end
         end
