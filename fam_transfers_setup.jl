@@ -342,7 +342,7 @@ end
 if pwd() == "/Users/scanilang/Documents/econ/umn/family_transfers/2026"
     fam_shock_df = CSV.read("/Users/scanilang/Documents/econ/umn/family_transfers/data/family_shock_table.csv", DataFrame; limit = 3)
 else
-    fam_shock_df = CSV.read("/users/4/canil007/bankruptcy/bankruptcy/Data/family_shock_table.csv", DataFrame; limit = 3)
+    fam_shock_df = CSV.read("/users/4/canil007/family_transfers/Data/family_shock_table.csv", DataFrame; limit = 3)
 end
 
 # Build lookup: (R, e_college) -> vector of (m, n, t_idx, prob)
