@@ -6,7 +6,7 @@ function solve_model(model, savepath)
     # -----------------------------------------------------------------------
     # NO COLLEGE PATH
     # -----------------------------------------------------------------------
-    if !isfile(joinpath(savepath, "NoSchool.jls")) 
+   #if !isfile(joinpath(savepath, "NoSchool.jls")) 
         
         # --- Retirement W_nc ---
         println("Solving No College Retirement...")
@@ -64,11 +64,11 @@ function solve_model(model, savepath)
         end
         
         open(joinpath(savepath, "NoSchool.jls"), "w") do io
-                serialize(io, (Vj_nc1 = Vj_nc1, PFj_nc1 = PFj_nc1,
-            Vj_nc2 = Vj_nc2, PFj_nc2 = PFj_nc2,
-            Wj_nc  = Wj_nc,  WPFj_nc = WPFj_nc))
+                serialize(io, (V_nc1 = V_nc1, PF_nc1 = PF_nc1,
+            V_nc2 = V_nc2, PF_nc2 = PF_nc2,
+            W_nc  = W_nc,  WPF_nc = WPF_nc))
             end
-    end
+    #end
 
     # -----------------------------------------------------------------------
     # COLLEGE PATH
@@ -159,21 +159,21 @@ function solve_model(model, savepath)
     Vs_1, PFs_1 = VSj_first_period(@view(Vs[1, :,:,:,:]), Vs_1, PFs_1, model)
 
     open(joinpath(savepath, "School.jls"), "w") do io
-            serialize(io, (Vj_c1  = Vj_c1,  PFj_c1  = PFj_c1,
-        Vj_c2  = Vj_c2,  PFj_c2  = PFj_c2,
-        Wj_c   = Wj_c,   WPFj_c  = WPFj_c,
-        Vsj    = Vsj,    PFsj    = PFsj,
-        Vsj_1  = Vsj_1,  PFsj_1  = PFsj_1))
+            serialize(io, (V_c1  = V_c1,  PF_c1  = PF_c1,
+        V_c2  = V_c2,  PF_c2  = PF_c2,
+        W_c   = W_c,   WPF_c  = WPF_c,
+        Vs    = Vs,    PFs    = PFs,
+        Vs_1  = Vs_1,  PFs_1  = PFs_1))#
         end
 
     return (
-        Vj_nc1 = Vj_nc1, PFj_nc1 = PFj_nc1,
-        Vj_nc2 = Vj_nc2, PFj_nc2 = PFj_nc2,
-        Wj_nc  = Wj_nc,  WPFj_nc = WPFj_nc,
-        Vj_c1  = Vj_c1,  PFj_c1  = PFj_c1,
-        Vj_c2  = Vj_c2,  PFj_c2  = PFj_c2,
-        Wj_c   = Wj_c,   WPFj_c  = WPFj_c,
-        Vsj    = Vsj,    PFsj    = PFsj,
-        Vsj_1  = Vsj_1,  PFsj_1  = PFsj_1
+        V_nc1 = V_nc1, PF_nc1 = PF_nc1,
+        V_nc2 = V_nc2, PF_nc2 = PF_nc2,
+        W_nc  = W_nc,  WPF_nc = WPF_nc,
+        V_c1  = V_c1,  PF_c1  = PF_c1,
+        V_c2  = V_c2,  PF_c2  = PF_c2,
+        W_c   = W_c,   WPF_c  = WPF_c,
+        Vs    = Vs,    PFs    = PFs,
+        Vs_1  = Vs_1,  PFs_1  = PFs_1
     )
 end
