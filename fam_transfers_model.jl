@@ -213,7 +213,7 @@ function model_create(;
 
     return (; tuition_2yr, tuition_4yr, r_loan,
               a_grid_nocollege, a_grid_college, school_a_grid, apnts_nc, apnts_c,
-              working_years, jpnts, fam_shock_period,
+              working_years, n_retirement, jpnts, fam_shock_period,
               family_shock_probs, fam_type, r, rb, ra_w, ra_b, gamma, beta, tax_a,
               survival_risk, Pimat, z_grid, a_grid, d_limit,
               tasks_idx_nc1, tasks_idx_nc2, tasks_idx_s2, tasks_idx_c1, tasks_idx_c2, tasks_idx_s1,
