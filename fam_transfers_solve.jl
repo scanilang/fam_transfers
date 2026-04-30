@@ -55,7 +55,7 @@ function solve_model(model, savepath)
     PF_nc1 = copy(V_nc1)
 
     Vnc2_first = @view V_nc2[1, :,:,:,:,:,:,:,:,:,:]
-    V_nc1[n_nc1, :,:,:,:,:,:,:,:], PF_nc1[n_nc1, :,:,:,:,:,:,:,:] = Vnc1j_solve(nothing, Vnc2_first, Vj_nc2, PFj_nc2, model, fam_shock_period)
+    V_nc1[n_nc1, :,:,:,:,:,:,:,:], PF_nc1[n_nc1, :,:,:,:,:,:,:,:] = Vnc1j_solve(nothing, Vnc2_first, Vj_nc1, PFj_nc1, model, fam_shock_period)
 
     for j in (fam_shock_period-1):-1:1
         V_jp1 = @view V_nc1[j+1, :,:,:,:,:,:,:,:]
