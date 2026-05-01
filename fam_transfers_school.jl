@@ -342,7 +342,7 @@ function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
         
             Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
@@ -402,7 +402,7 @@ end
 
 function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
     (; survival_risk, beta, gamma , working_years,shock_resources_cr, z_grid, a_grid_nocollege, 
-    tasks_idx_nc2, jpnts, Race, marital_status, fam_type) = model
+    tasks_idx_cr, jpnts, Race, marital_status, fam_type) = model
 
     fill!(Wj_c, 0f0)
     fill!(WPFj_c, 0f0)
@@ -417,8 +417,8 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
         wc_itp = nothing
     end
 
-    @threads for idx in eachindex(tasks_idx_nc2)
-        (R, m, n, t, degree, i_a, i_z) = tasks_idx_nc2[idx]
+    @threads for idx in eachindex(tasks_idx_cr)
+        (R, m, n, t, degree, i_a, i_z) = tasks_idx_cr[idx]
         if n > 2 || (m== 2 && n == 1)
             continue  # Skip family sizes that don't exist in retirement phase
         end
@@ -430,9 +430,6 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
             wcjp1_itp = nothing
         end 
         
-        # Lower bound: natural borrowing limit
-        lb = 0.0
-
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
             net_resources = shock_resources_cr[j_ret, R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
@@ -443,7 +440,7 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
                 WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
                 result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                            lb, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                            0.0, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
             end

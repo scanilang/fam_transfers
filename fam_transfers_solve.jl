@@ -1,7 +1,5 @@
 function solve_model(model, savepath)
-    (; apnts_nc, apnts_c, zpnts, working_years, jpnts, fam_shock_period) = model
-
-    n_retirement = jpnts - working_years
+    (; apnts_nc, apnts_c, zpnts, working_years,n_retirement, jpnts, fam_shock_period) = model
 
     # -----------------------------------------------------------------------
     # NO COLLEGE PATH

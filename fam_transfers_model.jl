@@ -26,7 +26,7 @@ function model_create(;
     tax_a = 0.2,
     family_shock_probs = family_shock_probs
     )
-
+    n_retirement = jpnts - working_years
     # Income Process
     MC_1 = rouwenhorst(zpnts, ρ[1], eps_std[1], 0)
     MC_2 = rouwenhorst(zpnts, ρ[2], eps_std[2], 0)
@@ -69,6 +69,12 @@ function model_create(;
     for R in Race, m in marital_status, n in fam_size, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
         push!(tasks_idx_c2, (R, m, n, t, degree, i_a, i_z))
     end
+
+    tasks_idx_cr = Vector{NTuple{7, Int64}}()
+    for R in Race, m in marital_status, n in fam_size, t in fam_type, degree in 1:2, i_a in 1:apnts_nc, i_z in 1:zpnts
+        push!(tasks_idx_c2, (R, m, n, t, degree, i_a, i_z))
+    end
+
 
     tasks_idx_c1 = Vector{NTuple{5, Int64}}()
     for R in Race, t in fam_type, degree in 1:2, i_a in 1:apnts_c, i_z in 1:zpnts
@@ -216,7 +222,7 @@ function model_create(;
               working_years, n_retirement, jpnts, fam_shock_period,
               family_shock_probs, fam_type, r, rb, ra_w, ra_b, gamma, beta, tax_a,
               survival_risk, Pimat, z_grid, a_grid, d_limit,
-              tasks_idx_nc1, tasks_idx_nc2, tasks_idx_s2, tasks_idx_c1, tasks_idx_c2, tasks_idx_s1,
+              tasks_idx_nc1, tasks_idx_nc2, tasks_idx_cr, tasks_idx_s2, tasks_idx_c1, tasks_idx_c2, tasks_idx_s1,
               y_values, shock_resources_nc, net_transfers_nc, prob_shocks_nc,shock_resources_cr,
               shock_resources_c, net_transfers_c, prob_shocks_c,
               Race, marital_status, fam_size, ed_type, zpnts)
