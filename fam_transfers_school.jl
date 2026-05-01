@@ -299,7 +299,7 @@ function EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out
 end
 
 function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
+    (; beta, gamma,a_grid_college, a_grid_nocollege, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
 
     fill!(Vj_c2, 0f0)
     fill!(PFj_c2, 0f0)
@@ -311,7 +311,7 @@ function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
 
         wc_itp = nothing
     else
-        wc_itp = [LinearInterpolation((a_grid_college, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
+        wc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
         vc2_itp = nothing
     end
