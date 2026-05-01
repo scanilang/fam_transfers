@@ -158,56 +158,57 @@ end
 # Working
 ###############################################################################################
 
-
 function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
-    (; beta, gamma,a_grid_college, tasks_idx_c1, shock_resources_c, d_limit, fam_shock_period, z_grid, Race, marital_status, fam_size, fam_type) = model
+    (; beta, gamma, a_grid_college, tasks_idx_c1, shock_resources_c, d_limit, fam_shock_period, z_grid, Race, marital_status, fam_size, fam_type) = model
 
     fill!(Vj_c1, 0f0)
     fill!(PFj_c1, 0f0)
 
-    # When creating interpolation objects for Vj+1:
     if j < fam_shock_period
-        vc2_itp = nothing
         vc1jp1_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc1jp1[R, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
            for R in Race, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
+        vc2_itp = nothing
     else
         vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
                for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
         vc1jp1_itp = nothing
     end
 
-
     @threads for idx in eachindex(tasks_idx_c1)
         (R, t, degree, i_a, i_z) = tasks_idx_c1[idx]
-        e = degree + 1  # maps degree choice to e (2 or 3)
-        if j < fam_shock_period
-            vc1_itp = vc1jp1_itp[R, t, degree, :, :, :, :]
-        else            
-            vc1_itp = nothing
-        end
+        e = degree + 1
 
-        # Lower bound: natural borrowing limit
+        vc1_itp = j < fam_shock_period ? vc1jp1_itp[R, t, degree, :, :, :, :] : nothing
         lb = -d_limit[j, R, degree]
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, 1, 1,t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, 1, 1, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+
+            ub     = net_resources - 0.001
+
+            if ub <= lb
+                c = max(net_resources - lb, 1e-6)
+                Vj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(c, gamma)
+                PFj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb_eff
+                continue
+            end
 
             if j < fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
-        
+
             Vj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
             PFj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
         end
     end
-    
+
     return Vj_c1, PFj_c1
 end
 
@@ -299,16 +300,14 @@ function EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out
 end
 
 function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
-    (; beta, gamma,a_grid_college, a_grid_nocollege, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
+    (; beta, gamma, a_grid_college, a_grid_nocollege, tasks_idx_c2, shock_resources_c, d_limit, z_grid, Race, marital_status, fam_size, fam_type, working_years) = model
 
     fill!(Vj_c2, 0f0)
     fill!(PFj_c2, 0f0)
 
-    # When creating interpolation objects for Vj+1:
     if j < working_years
         vc2_itp = [LinearInterpolation((a_grid_college, z_grid[R]), vc2jp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
            for R in Race, m in marital_status, n in fam_size, t in fam_type, e in 1:2, shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2]
-
         wc_itp = nothing
     else
         wc_itp = [LinearInterpolation((a_grid_nocollege, z_grid[R]), wcjp1[R, m, n, t, e, :, :, shock_in, shock_out, past_in, past_out], extrapolation_bc=Flat()) 
@@ -316,40 +315,51 @@ function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
         vc2_itp = nothing
     end
 
-
     @threads for idx in eachindex(tasks_idx_c2)
         (R, m, n, t, degree, i_a, i_z) = tasks_idx_c2[idx]
         e = degree + 1
-        if j < working_years
-            wcjp1_itp = nothing
-            vc2jp1_itp = vc2_itp[R, m, n, t, degree, :, :, :, :]
-        else    
-            wcjp1_itp = wc_itp[R, m, m, t, degree, :, :, :, :]
-            vc2jp1_itp = nothing
-        end
 
-        # Lower bound: natural borrowing limit
-        lb = -d_limit[j, R, degree]
+        if j < working_years
+            vc2jp1_itp = vc2_itp[R, m, n, t, degree, :, :, :, :]
+            wcjp1_itp  = nothing
+            lb = -d_limit[j, R, degree]
+        else
+            wcjp1_itp  = wc_itp[R, m, n, t, degree, :, :, :, :]  # fixed m,m -> m,n
+            vc2jp1_itp = nothing
+            lb = 0.0  # no borrowing into retirement
+        end
 
         for shock_in in 1:2, shock_out in 1:2, past_in in 1:2, past_out in 1:2
 
-            net_resources = shock_resources_c[j, R, m, n,t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            net_resources = shock_resources_c[j, R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out]
+            
+            # ensure lb allows positive consumption — agent borrows if needed
+            ub     = net_resources - 0.001
+
+            if ub <= lb
+                # even maximum borrowing can't afford minimum consumption
+                # consume what's available at maximum borrowing
+                c = max(net_resources - lb, 1e-6)
+                Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u_hh(c, gamma, m, n)
+                PFj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb_eff
+                continue
+            end
 
             if j < working_years
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m, n) + 
                      beta * EVc2_jp1(model, vc2jp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m, n) + 
                      beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
-        
+
             Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
             PFj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = result.minimizer
         end
     end
-    
+
     return Vj_c2, PFj_c2
 end
 
@@ -436,10 +446,10 @@ function Wcj(wcjp1, Wj_c, WPFj_c, model, j)
 
             if j == jpnts
                 # Last period of life, no future value
-                Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
+                Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u_hh(net_resources, gamma, m, m)
                 WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> - (u_hh(net_resources - ap1, gamma, m, m ) + beta *  sj* EWc_jp1(model, wcjp1_itp, j, R, m, m, e, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             0.0, net_resources,  Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_c[R, m, m, t, degree, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer

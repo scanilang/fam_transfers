@@ -6,10 +6,11 @@ using DataFrames
 # OECD scale
 function oecd(m,n)
     # oecd equivalence scale (1 + 0.7(Adults - 1) + 0.5 kids)
-    # m = `1 is married
-    m = m - 1
+    # m = `2 is married
+    adults = m == 2 ? 2 : 1 
+    kids = n - adults
     # n family size`
-    return (1 + 0.7(m) + 0.5(n-(m + 1)))
+    return (1 + 0.7(adults - 1) + 0.5(kids))
 end
 
 # CRRA utility function

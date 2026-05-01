@@ -182,11 +182,11 @@ function Vnc2j_solve(vnc2jp1, wncjp1, Vj_nc2, PFj_nc2, model, j)
             net_resources = shock_resources_nc[j, R, m, n,t, i_a, i_z, shock_in, shock_out, past_in, past_out]
 
             if j < working_years
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m,n) + 
                      beta * EVnc2_jp1(model, vnc2jp1_itp, j, R, m, n, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources,Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
-                result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
+                result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m, n) + 
                      beta * EWnc_jp1(model, wncjp1_itp, j, R, m, m, t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                      0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
@@ -280,10 +280,10 @@ function Wncj(wncjp1, Wj_nc, WPFj_nc, model, j)
 
             if j == jpnts
                 # Last period of life, no future value
-                Wj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(net_resources, gamma)
+                Wj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = u_hh(net_resources, gamma, m, m)
                 WPFj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = 0.0
             else
-                result = optimize(ap1 -> - (u(net_resources - ap1, gamma) + beta *  sj* EWnc_jp1(model, wncjp1_itp, j, R, m, m,  t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
+                result = optimize(ap1 -> - (u_hh(net_resources - ap1, gamma, m, m) + beta *  sj* EWnc_jp1(model, wncjp1_itp, j, R, m, m,  t, ap1, i_z, shock_in, shock_out, past_in, past_out)),
                             0.0, net_resources, Brent(); rel_tol=1e-4, abs_tol=1e-4)
                 Wj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
                 WPFj_nc[R, m, m, t, i_a, i_z, shock_in, shock_out,past_in,past_out] = result.minimizer
