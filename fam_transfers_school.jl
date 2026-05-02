@@ -190,18 +190,18 @@ function Vc1j_solve(vc1jp1, vc2jp1, Vj_c1, PFj_c1, model, j)
             if ub <= lb
                 c = max(net_resources - lb, 1e-6)
                 Vj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u(c, gamma)
-                PFj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb_eff
+                PFj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb
                 continue
             end
 
             if j < fam_shock_period
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u(net_resources - ap1, gamma) + 
                      beta * EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
 
             Vj_c1[R, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum
@@ -341,18 +341,18 @@ function Vc2j_solve(vc2jp1, wcjp1, Vj_c2, PFj_c2, model, j)
                 # consume what's available at maximum borrowing
                 c = max(net_resources - lb, 1e-6)
                 Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = u_hh(c, gamma, m, n)
-                PFj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb_eff
+                PFj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = lb
                 continue
             end
 
             if j < working_years
                 result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m, n) + 
                      beta * EVc2_jp1(model, vc2jp1_itp, j, R, m, n, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             else
                 result = optimize(ap1 -> -(u_hh(net_resources - ap1, gamma, m, n) + 
                      beta * EWc_jp1(model, wcjp1_itp, j, R, m, m, t, e, ap1, i_z, shock_in, shock_out, past_in, past_out)),
-                     lb_eff, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
+                     lb, ub, Brent(); rel_tol=1e-4, abs_tol=1e-4)
             end
 
             Vj_c2[R, m, n, t, degree, i_a, i_z, shock_in, shock_out, past_in, past_out] = -result.minimum

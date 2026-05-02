@@ -93,10 +93,10 @@ function solve_model(model, savepath)
     println("Solving College Post-Family-Shock Working...")
     # Dims: (j, R, m, n, t, e_idx, i_a, i_z, shocks) = 11 non-j
     n_c2 = working_years - fam_shock_period  # = 36
-    Vj_c2  = zeros(Float32, n_c2, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    Vj_c2  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     PFj_c2 = copy(Vj_c2)
 
-    V_c2  = zeros(Float32, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
+    V_c2  = zeros(Float32,n_c2, 2, 2, 5, 3, 2, apnts_c, zpnts, 2, 2, 2, 2)
     PF_c2 = copy(V_c2)
 
     W_ret_first_c = @view W_c[1, :,:,:,:,:,:,:,:,:,:,:]
