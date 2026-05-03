@@ -259,6 +259,7 @@ function EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out
     (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
+    a_income = max(a_income, 0.0)
 
     outcomes = family_shock_probs[(R, e_college(e))]
     expected_value = 0.0
