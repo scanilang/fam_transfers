@@ -65,7 +65,7 @@ end
 
 function VSj_enrolled(vsjp1, vc1jp1, Vsj, PFsj, model, j)
     (; beta, gamma, r, r_loan, a_grid_college, d_limit,z_grid, working_years,
-       tuition_2yr, tuition_4yr, tasks_idx_s2, Race, fam_type) = model
+     tuition_2yr, tuition_4yr, tasks_idx_s2, Race, fam_type) = model
 
     fill!(Vsj, 0f0)
     fill!(PFsj, 0f0)
@@ -216,6 +216,7 @@ function EVc1_jp1(model, vc1_itp, j, R, t, e, ap1, i_z, shock_in, shock_out, pas
     (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
+    a_income = max(a_income, 0.0)
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
@@ -368,10 +369,11 @@ function EVc2_jp1(model, vc2jp1_itp, j, R, m,n, t, e, ap1, i_z, shock_in, shock_
     (; Pimat, zpnts, y_values, ra_w, ra_b) = model
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
+    a_income = max(a_income, 0.0)
 
     expected_value = 0.0
     for i_zp1 in 1:zpnts
-        pi_z =Pimat[i_z, i_zp1]
+        pi_z =Pimat[R][i_z, i_zp1]
         y = y_values[R, jp1, m, e, i_zp1]
         for shock_in_next in 1:2, shock_out_next in 1:2, past_in_next in 1:2, past_out_next in 1:2
             # update past in and past out flags based on past flags and past shocks
