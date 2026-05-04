@@ -260,6 +260,7 @@ function EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out
     jp1 = j + 1
     a_income = R == 1 ? ap1 * ra_w : ap1 * ra_b
     a_income = max(a_income, 0.0)
+    degree = e - 1 
 
     outcomes = family_shock_probs[(R, e_college(e))]
     expected_value = 0.0
@@ -292,7 +293,7 @@ function EV_family_jp1(model, vc2_itp, j, R, t, e, ap1, i_z, shock_in, shock_out
                 end
 
                 # expected value contribution from next period state
-                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc2_itp[R, m_next, n_next, t_next, e, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
+                expected_value += prob_fam * pi_z * shock_out_next_prob *  shock_in_next_prob* vc2_itp[R, m_next, n_next, t_next, degree, shock_in_next, shock_out_next, past_in_next, past_out_next](ap1, i_zp1)
     
             end
         end
